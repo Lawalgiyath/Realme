@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   HeartPulse,
   LayoutDashboard,
@@ -44,6 +44,11 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 export default function Dashboard() {
   const { assessmentResult } = useApp();
+  const [activeTab, setActiveTab] = useState('dashboard');
+
+  const navigateTo = (tab: string) => {
+    setActiveTab(tab);
+  };
 
   return (
     <SidebarProvider>
@@ -59,25 +64,25 @@ export default function Dashboard() {
           </SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton href="#dashboard" isActive>
+              <SidebarMenuButton onClick={() => navigateTo('dashboard')} isActive={activeTab === 'dashboard'}>
                 <LayoutDashboard />
                 Dashboard
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton href="#assessment">
+              <SidebarMenuButton onClick={() => navigateTo('assessment')} isActive={activeTab === 'assessment'}>
                 <FileText />
                 Assessment
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton href="#goals">
+              <SidebarMenuButton onClick={() => navigateTo('goals')} isActive={activeTab === 'goals'}>
                 <Target />
                 Goals
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton href="#resources">
+              <SidebarMenuButton onClick={() => navigateTo('resources')} isActive={activeTab === 'resources'}>
                 <Library />
                 Resources
               </SidebarMenuButton>
@@ -96,7 +101,7 @@ export default function Dashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button size="sm" className="w-full">
+                <Button size="sm" className="w-full" onClick={() => navigateTo('assessment')}>
                   Start Assessment
                 </Button>
               </CardContent>
@@ -122,7 +127,7 @@ export default function Dashboard() {
               </Avatar>
             </header>
             <div className="p-4 md:p-6">
-              <Tabs defaultValue="dashboard" className="w-full">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <ScrollArea className="w-full whitespace-nowrap">
                   <TabsList className="grid-cols-none inline-grid w-auto">
                     <TabsTrigger value="dashboard">
