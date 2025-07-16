@@ -1,6 +1,6 @@
 "use client";
 
-import { Smile, Meh, Frown, Annoyed, Calm } from 'lucide-react';
+import { Smile, Meh, Frown, Annoyed, Wind } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useApp } from '@/context/app-context';
@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 
 const moods = [
   { name: 'Happy', icon: Smile, color: 'text-green-500' },
-  { name: 'Calm', icon: Calm, color: 'text-blue-500' },
+  { name: 'Calm', icon: Wind, color: 'text-blue-500' },
   { name: 'Okay', icon: Meh, color: 'text-yellow-500' },
   { name: 'Anxious', icon: Annoyed, color: 'text-orange-500' },
   { name: 'Sad', icon: Frown, color: 'text-purple-500' },
