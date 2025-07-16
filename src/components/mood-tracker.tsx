@@ -32,18 +32,18 @@ export default function MoodTracker() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>How are you feeling today?</CardTitle>
-        <CardDescription>Log your daily mood to identify patterns.</CardDescription>
+        <CardTitle>How are you feeling?</CardTitle>
+        <CardDescription>Log your daily mood.</CardDescription>
       </CardHeader>
       <CardContent>
         {moodForToday ? (
           <div className="flex flex-col items-center justify-center h-full gap-4 p-4 bg-secondary rounded-lg">
-            <p className="text-muted-foreground">You've logged your mood today as:</p>
-            <p className="text-2xl font-bold font-headline text-primary">{moodForToday.mood}</p>
+            <p className="text-sm text-muted-foreground">You've logged your mood today as:</p>
+            <p className="text-3xl font-bold font-headline text-primary">{moodForToday.mood}</p>
             <Button variant="outline" onClick={() => handleMoodSelect(moodForToday.mood)}>Change Mood</Button>
           </div>
         ) : (
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
             {moods.map(({ name, icon: Icon, color }) => (
               <Button
                 key={name}

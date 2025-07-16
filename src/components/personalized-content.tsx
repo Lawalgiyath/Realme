@@ -74,14 +74,14 @@ export default function PersonalizedContent() {
   return (
     <div className="grid gap-6 md:grid-cols-3">
         <Card>
-            <CardContent className="p-6">
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><BookOpen className="text-primary"/> Suggested Articles</h3>
-                <ul className="space-y-3">
+            <CardContent className="p-4 md:p-6">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><BookOpen className="text-primary h-5 w-5"/> Suggested Articles</h3>
+                <ul className="space-y-4">
                     {personalizedContent.articles.map((article, i) => (
-                        <li key={i} className="flex items-start gap-3">
-                            <Image data-ai-hint="wellness article" src="https://placehold.co/100x100.png" alt={article} width={60} height={60} className="rounded-md" />
+                        <li key={i} className="flex items-start gap-4">
+                            <Image data-ai-hint="wellness article" src="https://placehold.co/100x100.png" alt={article} width={60} height={60} className="rounded-lg aspect-square object-cover" />
                             <div>
-                                <p className="font-medium text-sm">{article}</p>
+                                <p className="font-medium text-sm leading-snug">{article}</p>
                                 <a href="#" className="text-xs text-primary hover:underline">Read more</a>
                             </div>
                         </li>
@@ -90,14 +90,14 @@ export default function PersonalizedContent() {
             </CardContent>
         </Card>
         <Card>
-            <CardContent className="p-6">
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><Wind className="text-primary"/> Guided Meditations</h3>
-                <ul className="space-y-3">
+            <CardContent className="p-4 md:p-6">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><Wind className="text-primary h-5 w-5"/> Guided Meditations</h3>
+                <ul className="space-y-4">
                     {personalizedContent.meditations.map((meditation, i) => (
-                        <li key={i} className="flex items-start gap-3">
-                            <Image data-ai-hint="meditation nature" src="https://placehold.co/100x100.png" alt={meditation} width={60} height={60} className="rounded-md" />
+                        <li key={i} className="flex items-start gap-4">
+                            <Image data-ai-hint="meditation nature" src="https://placehold.co/100x100.png" alt={meditation} width={60} height={60} className="rounded-lg aspect-square object-cover" />
                             <div>
-                                <p className="font-medium text-sm">{meditation}</p>
+                                <p className="font-medium text-sm leading-snug">{meditation}</p>
                                 <a href="#" className="text-xs text-primary hover:underline">Start session</a>
                             </div>
                         </li>
@@ -106,14 +106,14 @@ export default function PersonalizedContent() {
             </CardContent>
         </Card>
         <Card>
-            <CardContent className="p-6">
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><BrainCircuit className="text-primary"/> Mindfulness Exercises</h3>
-                <ul className="space-y-3">
+            <CardContent className="p-4 md:p-6">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><BrainCircuit className="text-primary h-5 w-5"/> Mindfulness Exercises</h3>
+                <ul className="space-y-4">
                     {personalizedContent.exercises.map((exercise, i) => (
-                         <li key={i} className="flex items-start gap-3">
-                            <Image data-ai-hint="mindfulness yoga" src="https://placehold.co/100x100.png" alt={exercise} width={60} height={60} className="rounded-md" />
+                         <li key={i} className="flex items-start gap-4">
+                            <Image data-ai-hint="mindfulness yoga" src="https://placehold.co/100x100.png" alt={exercise} width={60} height={60} className="rounded-lg aspect-square object-cover" />
                             <div>
-                                <p className="font-medium text-sm">{exercise}</p>
+                                <p className="font-medium text-sm leading-snug">{exercise}</p>
                                 <a href="#" className="text-xs text-primary hover:underline">Try it now</a>
                             </div>
                         </li>
