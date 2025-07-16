@@ -1,3 +1,10 @@
+import Dashboard from '@/components/dashboard';
+import { AppProvider } from '@/context/app-context';
+
 export default function Home() {
-  return <></>;
+  return (
+    <AppProvider>
+      <Dashboard />
+    </AppProvider>
+  );
 }
