@@ -162,7 +162,7 @@ export default function Dashboard() {
 
         <div className="p-4 md:p-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <div className="md:hidden">
+            <div className="md:hidden mb-4">
                 <ScrollArea className="w-full whitespace-nowrap">
                 <TabsList className="grid-cols-none inline-grid w-auto">
                     <TabsTrigger value="dashboard">
@@ -191,9 +191,9 @@ export default function Dashboard() {
             </div>
             
             <TabsContent value="dashboard">
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                <div className="md:col-span-2 lg:col-span-2">
-                    <Card>
+              <div className="grid gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <Card className="lg:col-span-2">
                         <CardHeader>
                             <CardTitle>Mood & Progress</CardTitle>
                             <CardDescription>
@@ -204,9 +204,9 @@ export default function Dashboard() {
                             <ProgressChart />
                         </CardContent>
                     </Card>
+                    <MoodTracker />
                 </div>
-                <MoodTracker />
-                <div className="md:col-span-2 lg:col-span-3">
+                <div>
                     <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-xl">
