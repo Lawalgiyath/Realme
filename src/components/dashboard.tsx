@@ -43,10 +43,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 
 const SidebarNav = ({ activeTab, navigateTo, isCollapsed, toggleCollapse }: { activeTab: string, navigateTo: (tab: string) => void, isCollapsed: boolean, toggleCollapse: () => void, className?: string }) => (
-  <nav className="flex flex-col h-full">
-    <div className={cn("flex items-center gap-2 p-4 border-b", isCollapsed && "justify-center")}>
-      <div className="p-1.5 rounded-lg bg-primary">
-        <HeartPulse className="h-6 w-6 text-primary-foreground" />
+  <nav className="flex flex-col h-full bg-sidebar text-sidebar-foreground">
+    <div className={cn("flex items-center gap-2 p-4 border-b border-sidebar-border", isCollapsed && "justify-center")}>
+      <div className="p-1.5 rounded-lg bg-sidebar-primary">
+        <HeartPulse className="h-6 w-6 text-sidebar-primary-foreground" />
       </div>
       <h1 className={cn("text-xl font-semibold font-headline transition-opacity duration-300", isCollapsed && "opacity-0 w-0")}>Realme</h1>
     </div>
@@ -59,28 +59,30 @@ const SidebarNav = ({ activeTab, navigateTo, isCollapsed, toggleCollapse }: { ac
         <SidebarNavItem icon={Library} label="Resources" tab="resources" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
     </div>
     </TooltipProvider>
-    <div className="p-2 mt-auto border-t">
-        <Card className={cn("bg-accent border-none shadow-inner transition-all", isCollapsed && "p-2 bg-transparent")}>
+    <div className="p-2 mt-auto border-t border-sidebar-border">
+        <Card className={cn("bg-sidebar-accent border-none shadow-inner transition-all", isCollapsed && "p-2 bg-transparent shadow-none")}>
           <CardHeader className={cn("p-4", isCollapsed && "hidden")}>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Sparkles className="text-primary" />
+            <CardTitle className="text-base flex items-center gap-2 text-sidebar-accent-foreground">
+              <Sparkles className="text-sidebar-primary" />
               AI-Powered Insights
             </CardTitle>
-            <CardDescription className="text-xs">
+            <CardDescription className="text-xs text-sidebar-accent-foreground/80">
               Complete your assessment to unlock personalized content and
               support.
             </CardDescription>
           </CardHeader>
           <CardContent className={cn("p-4 pt-0", isCollapsed && "hidden")}>
-            <Button size="sm" className="w-full" onClick={() => navigateTo('assessment')}>
+            <Button size="sm" className="w-full bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90" onClick={() => navigateTo('assessment')}>
               Start Assessment
             </Button>
           </CardContent>
         </Card>
-        <Button variant="ghost" className="w-full justify-center mt-2" onClick={toggleCollapse}>
-            {isCollapsed ? <ChevronsRight /> : <ChevronsLeft />}
-            <span className="sr-only">{isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}</span>
-        </Button>
+        <div className="mt-2">
+            <Button variant="ghost" className="w-full justify-center text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" onClick={toggleCollapse}>
+                {isCollapsed ? <ChevronsRight /> : <ChevronsLeft />}
+                <span className="sr-only">{isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}</span>
+            </Button>
+        </div>
     </div>
   </nav>
 );
@@ -90,7 +92,11 @@ const SidebarNavItem = ({ icon: Icon, label, tab, activeTab, navigateTo, isColla
         <TooltipTrigger asChild>
             <Button
               variant={activeTab === tab ? 'secondary' : 'ghost'}
-              className={cn("w-full justify-start", isCollapsed && "justify-center")}
+              className={cn(
+                "w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground", 
+                isCollapsed && "justify-center",
+                activeTab === tab && "bg-sidebar-accent text-sidebar-accent-foreground"
+                )}
               onClick={() => navigateTo(tab)}
             >
               <Icon className="h-5 w-5" />
@@ -98,7 +104,7 @@ const SidebarNavItem = ({ icon: Icon, label, tab, activeTab, navigateTo, isColla
             </Button>
         </TooltipTrigger>
         {isCollapsed && (
-            <TooltipContent side="right">
+            <TooltipContent side="right" className="bg-popover text-popover-foreground">
                 <p>{label}</p>
             </TooltipContent>
         )}
@@ -123,7 +129,7 @@ export default function Dashboard() {
   return (
     <div className="flex min-h-screen bg-background">
       {/* Desktop Sidebar */}
-      <aside className={cn("hidden md:block flex-shrink-0 border-r transition-all duration-300", isSidebarCollapsed ? 'md:w-20' : 'md:w-64')}>
+      <aside className={cn("hidden md:block flex-shrink-0 border-r border-sidebar-border transition-all duration-300", isSidebarCollapsed ? 'md:w-20' : 'md:w-64')}>
           <SidebarNav activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isSidebarCollapsed} toggleCollapse={toggleSidebarCollapse} />
       </aside>
 
@@ -138,7 +144,7 @@ export default function Dashboard() {
                         <span className="sr-only">Toggle Sidebar</span>
                     </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="p-0 w-72">
+                <SheetContent side="left" className="p-0 w-72 border-r-0">
                   <SheetHeader className="sr-only">
                     <SheetTitle>Menu</SheetTitle>
                   </SheetHeader>
