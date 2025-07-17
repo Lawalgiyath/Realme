@@ -18,7 +18,7 @@ const resources = [
     name: 'Ndidi Health',
     description: 'Provides accessible and affordable mental healthcare services, including teletherapy with licensed professionals.',
     phone: 'Contact via website',
-    website: 'ndidihealth.com',
+    website: 'www.ndidi.me',
   },
   {
     name: 'Nigeria Suicide Prevention Initiative',
