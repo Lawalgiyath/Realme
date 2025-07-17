@@ -12,6 +12,8 @@ import {
   PanelLeft,
   ChevronsLeft,
   ChevronsRight,
+  LogOut,
+  User,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -40,6 +42,9 @@ import {
 } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useApp } from '@/context/app-context';
+import { useRouter } from 'next/navigation';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
 
 
 const SidebarNav = ({ activeTab, navigateTo, isCollapsed, toggleCollapse }: { activeTab: string, navigateTo: (tab: string) => void, isCollapsed: boolean, toggleCollapse: () => void, className?: string }) => (
@@ -116,6 +121,8 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const { user, logout } = useApp();
+  const router = useRouter();
 
   const navigateTo = (tab: string) => {
     setActiveTab(tab);
@@ -124,6 +131,11 @@ export default function Dashboard() {
   
   const toggleSidebarCollapse = () => {
     setSidebarCollapsed(prevState => !prevState);
+  };
+
+  const handleLogout = () => {
+    logout();
+    router.replace('/');
   };
 
   return (
@@ -152,17 +164,41 @@ export default function Dashboard() {
                 </SheetContent>
             </Sheet>
             <h1 className="text-lg font-semibold md:text-xl font-headline">
-              Welcome back!
+              Welcome back, {user?.name.split(' ')[0]}!
             </h1>
           </div>
-          <Avatar>
-            <AvatarImage
-              src="https://placehold.co/100x100.png"
-              alt="User"
-              data-ai-hint="user avatar"
-            />
-            <AvatarFallback>U</AvatarFallback>
-          </Avatar>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                    <Avatar className="h-10 w-10">
+                        <AvatarImage
+                            src={user?.avatar}
+                            alt={user?.name}
+                            data-ai-hint="animal avatar"
+                        />
+                        <AvatarFallback>{user?.name?.[0].toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>
+                    <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">{user?.name}</p>
+                        <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                    </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => router.push('/profile')}>
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </header>
 
         <div className="p-4 md:p-6">
