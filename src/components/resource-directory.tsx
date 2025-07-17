@@ -1,30 +1,30 @@
-import { Phone, Globe } from 'lucide-react';
+import { Phone, Globe, MessageSquare } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const resources = [
   {
-    name: 'National Suicide Prevention Lifeline',
-    description: 'Provides 24/7, free and confidential support for people in distress, prevention and crisis resources for you or your loved ones.',
-    phone: '988',
-    website: '988lifeline.org',
+    name: 'Mentally Aware Nigeria Initiative (MANI)',
+    description: 'A non-profit organization focused on raising awareness about mental health and combating stigma in Nigeria.',
+    phone: '+2348060121120',
+    website: 'mentallyaware.org',
   },
   {
-    name: 'Crisis Text Line',
-    description: 'Text HOME to 741741 from anywhere in the US, anytime, about any type of crisis. A live, trained Crisis Counselor receives the text and responds.',
-    phone: 'Text HOME to 741741',
-    website: 'crisistextline.org',
+    name: 'She Writes Woman',
+    description: 'A women-led movement giving mental health a voice in Nigeria, offering a 24/7 helpline.',
+    phone: '08008002000',
+    website: 'shewriteswoman.org',
   },
   {
-    name: 'The Trevor Project',
-    description: 'The leading national organization providing crisis intervention and suicide prevention services to lesbian, gay, bisexual, transgender, queer & questioning (LGBTQ) young people under 25.',
-    phone: '1-866-488-7386',
-    website: 'thetrevorproject.org',
+    name: 'Ndidi Health',
+    description: 'Provides accessible and affordable mental healthcare services, including teletherapy with licensed professionals.',
+    phone: 'Contact via website',
+    website: 'ndidihealth.com',
   },
   {
-    name: 'NAMI (National Alliance on Mental Illness)',
-    description: 'The nation’s largest grassroots mental health organization dedicated to building better lives for the millions of Americans affected by mental illness.',
-    phone: '1-800-950-NAMI (6264)',
-    website: 'nami.org',
+    name: 'Nigeria Suicide Prevention Initiative',
+    description: 'Provides suicide prevention services and counseling for individuals in crisis.',
+    phone: '+2348062106493',
+    website: 'nspi.com.ng',
   },
 ];
 
@@ -32,8 +32,8 @@ export default function ResourceDirectory() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Resource Directory</CardTitle>
-        <CardDescription>Find contact information for various mental health support services.</CardDescription>
+        <CardTitle>Nigerian Mental Health Resources</CardTitle>
+        <CardDescription>Find contact information for mental health support services in Nigeria.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6 md:grid-cols-2">
         {resources.map((resource) => (

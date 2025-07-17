@@ -8,9 +8,7 @@ import {
   Sparkles,
   FileText,
   Target,
-  Smile,
-  Meh,
-  Frown,
+  GlassWater
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -33,7 +31,6 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useApp } from '@/context/app-context';
 import Assessment from './assessment';
 import WellnessGoals from './wellness-goals';
 import ResourceDirectory from './resource-directory';
@@ -41,9 +38,9 @@ import MoodTracker from './mood-tracker';
 import ProgressChart from './progress-chart';
 import PersonalizedContent from './personalized-content';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import WorryJar from './worry-jar';
 
 export default function Dashboard() {
-  const { assessmentResult } = useApp();
   const [activeTab, setActiveTab] = useState('dashboard');
 
   const navigateTo = (tab: string) => {
@@ -79,6 +76,12 @@ export default function Dashboard() {
               <SidebarMenuButton onClick={() => navigateTo('goals')} isActive={activeTab === 'goals'}>
                 <Target />
                 Goals
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton onClick={() => navigateTo('worry-jar')} isActive={activeTab === 'worry-jar'}>
+                <GlassWater />
+                Worry Jar
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
@@ -142,6 +145,10 @@ export default function Dashboard() {
                       <Target className="mr-2 h-4 w-4" />
                       Goals
                     </TabsTrigger>
+                    <TabsTrigger value="worry-jar">
+                      <GlassWater className="mr-2 h-4 w-4" />
+                      Worry Jar
+                    </TabsTrigger>
                     <TabsTrigger value="resources">
                       <Library className="mr-2 h-4 w-4" />
                       Resources
@@ -173,7 +180,7 @@ export default function Dashboard() {
                           AI-driven content suggestions based on your assessment
                           results and preferences.
                         </CardDescription>
-                      </CardHeader>
+                      </Header>
                       <CardContent>
                         <PersonalizedContent />
                       </CardContent>
@@ -185,6 +192,9 @@ export default function Dashboard() {
                 </TabsContent>
                 <TabsContent value="goals">
                   <WellnessGoals />
+                </TabsContent>
+                <TabsContent value="worry-jar">
+                  <WorryJar />
                 </TabsContent>
                 <TabsContent value="resources">
                   <ResourceDirectory />
