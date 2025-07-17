@@ -10,6 +10,8 @@ import {
   Target,
   GlassWater,
   PanelLeft,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -37,61 +39,29 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
-const SidebarNav = ({ activeTab, navigateTo, className }: { activeTab: string, navigateTo: (tab: string) => void, className?: string }) => (
-  <nav className={cn("flex flex-col h-full", className)}>
-    <div className="flex items-center gap-2 p-4 border-b">
+const SidebarNav = ({ activeTab, navigateTo, isCollapsed, toggleCollapse }: { activeTab: string, navigateTo: (tab: string) => void, isCollapsed: boolean, toggleCollapse: () => void, className?: string }) => (
+  <nav className="flex flex-col h-full">
+    <div className={cn("flex items-center gap-2 p-4 border-b", isCollapsed && "justify-center")}>
       <div className="p-1.5 rounded-lg bg-primary">
         <HeartPulse className="h-6 w-6 text-primary-foreground" />
       </div>
-      <h1 className="text-xl font-semibold font-headline">Realme</h1>
+      <h1 className={cn("text-xl font-semibold font-headline transition-opacity duration-300", isCollapsed && "opacity-0 w-0")}>Realme</h1>
     </div>
-    <div className="flex-1 p-2">
-      <Button
-        variant={activeTab === 'dashboard' ? 'secondary' : 'ghost'}
-        className="w-full justify-start"
-        onClick={() => navigateTo('dashboard')}
-      >
-        <LayoutDashboard className="mr-2" />
-        Dashboard
-      </Button>
-      <Button
-        variant={activeTab === 'assessment' ? 'secondary' : 'ghost'}
-        className="w-full justify-start"
-        onClick={() => navigateTo('assessment')}
-      >
-        <FileText className="mr-2" />
-        Assessment
-      </Button>
-      <Button
-        variant={activeTab === 'goals' ? 'secondary' : 'ghost'}
-        className="w-full justify-start"
-        onClick={() => navigateTo('goals')}
-      >
-        <Target className="mr-2" />
-        Goals
-      </Button>
-      <Button
-        variant={activeTab === 'worry-jar' ? 'secondary' : 'ghost'}
-        className="w-full justify-start"
-        onClick={() => navigateTo('worry-jar')}
-      >
-        <GlassWater className="mr-2" />
-        Worry Jar
-      </Button>
-      <Button
-        variant={activeTab === 'resources' ? 'secondary' : 'ghost'}
-        className="w-full justify-start"
-        onClick={() => navigateTo('resources')}
-      >
-        <Library className="mr-2" />
-        Resources
-      </Button>
+    <TooltipProvider delayDuration={0}>
+    <div className="flex-1 p-2 space-y-1">
+        <SidebarNavItem icon={LayoutDashboard} label="Dashboard" tab="dashboard" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
+        <SidebarNavItem icon={FileText} label="Assessment" tab="assessment" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
+        <SidebarNavItem icon={Target} label="Goals" tab="goals" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
+        <SidebarNavItem icon={GlassWater} label="Worry Jar" tab="worry-jar" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
+        <SidebarNavItem icon={Library} label="Resources" tab="resources" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
     </div>
-    <div className="p-2 mt-auto">
-        <Card className="bg-accent border-none shadow-inner">
-          <CardHeader>
+    </TooltipProvider>
+    <div className="p-2 mt-auto border-t">
+        <Card className={cn("bg-accent border-none shadow-inner transition-all", isCollapsed && "p-2 bg-transparent")}>
+          <CardHeader className={cn("p-4", isCollapsed && "hidden")}>
             <CardTitle className="text-base flex items-center gap-2">
               <Sparkles className="text-primary" />
               AI-Powered Insights
@@ -101,31 +71,60 @@ const SidebarNav = ({ activeTab, navigateTo, className }: { activeTab: string, n
               support.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className={cn("p-4 pt-0", isCollapsed && "hidden")}>
             <Button size="sm" className="w-full" onClick={() => navigateTo('assessment')}>
               Start Assessment
             </Button>
           </CardContent>
         </Card>
+        <Button variant="ghost" className="w-full justify-center mt-2" onClick={toggleCollapse}>
+            {isCollapsed ? <ChevronsRight /> : <ChevronsLeft />}
+            <span className="sr-only">{isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}</span>
+        </Button>
     </div>
   </nav>
+);
+
+const SidebarNavItem = ({ icon: Icon, label, tab, activeTab, navigateTo, isCollapsed }: { icon: React.ElementType, label: string, tab: string, activeTab: string, navigateTo: (tab: string) => void, isCollapsed: boolean }) => (
+    <Tooltip>
+        <TooltipTrigger asChild>
+            <Button
+              variant={activeTab === tab ? 'secondary' : 'ghost'}
+              className={cn("w-full justify-start", isCollapsed && "justify-center")}
+              onClick={() => navigateTo(tab)}
+            >
+              <Icon className="h-5 w-5" />
+              <span className={cn("ml-2 transition-opacity", isCollapsed && "opacity-0 w-0")}>{label}</span>
+            </Button>
+        </TooltipTrigger>
+        {isCollapsed && (
+            <TooltipContent side="right">
+                <p>{label}</p>
+            </TooltipContent>
+        )}
+    </Tooltip>
 );
 
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const navigateTo = (tab: string) => {
     setActiveTab(tab);
-    setMobileSidebarOpen(false); // Close sidebar on navigation
+    setMobileSidebarOpen(false); // Close mobile sidebar on navigation
+  };
+  
+  const toggleSidebarCollapse = () => {
+    setSidebarCollapsed(prevState => !prevState);
   };
 
   return (
     <div className="flex min-h-screen bg-background">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:block md:w-64 flex-shrink-0 border-r">
-          <SidebarNav activeTab={activeTab} navigateTo={navigateTo} />
+      <aside className={cn("hidden md:block flex-shrink-0 border-r transition-all duration-300", isSidebarCollapsed ? 'md:w-20' : 'md:w-64')}>
+          <SidebarNav activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isSidebarCollapsed} toggleCollapse={toggleSidebarCollapse} />
       </aside>
 
       <main className="flex-1">
@@ -143,7 +142,7 @@ export default function Dashboard() {
                   <SheetHeader className="sr-only">
                     <SheetTitle>Menu</SheetTitle>
                   </SheetHeader>
-                  <SidebarNav activeTab={activeTab} navigateTo={navigateTo} />
+                  <SidebarNav activeTab={activeTab} navigateTo={navigateTo} isCollapsed={false} toggleCollapse={() => {}} />
                 </SheetContent>
             </Sheet>
             <h1 className="text-lg font-semibold md:text-xl font-headline">
