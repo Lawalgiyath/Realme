@@ -33,7 +33,7 @@ const onboardingSlides = [
     icon: Target,
     title: 'Set and Track Your Goals',
     description: 'Define what wellness means to you. Create personal goals and track your progress as you go.',
-    image: 'https://images.unsplash.com/photo-1558544943-85f3e7b51e62?q=80&w=1887&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+    image: 'https://images.unsplash.com/photo-1620146444805-f093a1a5f64b?q=80&w=1887&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
     aiHint: 'goals target',
   },
   {
