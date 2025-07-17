@@ -26,7 +26,7 @@ const onboardingSlides = [
     icon: FileText,
     title: 'Understand Yourself Better',
     description: 'Start with a private AI-powered assessment. Your answers help us tailor content and resources just for you.',
-    image: 'https://i.ibb.co/hK9j5Yy/premium-photo-1665990294269-f1d6c35ab9d1-q-80-w-869-auto-format-fit-crop-ixlib-rb-4-1-0-ixid-M3wx-A.jpg',
+    image: 'https://i.ibb.co/4nD5JShY/ling-app-8-VTvtf04jx4-unsplash.jpg',
     aiHint: 'questions form',
   },
   {
@@ -40,7 +40,7 @@ const onboardingSlides = [
     icon: GlassWater,
     title: 'Find Calm with the Worry Jar',
     description: 'Feeling anxious? Write down your worries and let our AI provide a calming, reframed thought.',
-    image: 'https://i.ibb.co/wYpMh0x/download.jpg',
+    image: 'https://i.ibb.co/rKkqmNsT/nik-LUYD2b7-MNrg-unsplash.jpg',
     aiHint: 'calm water',
   },
   {
