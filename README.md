@@ -1,5 +1,5 @@
-# Firebase Studio
-
-This is a NextJS starter in Firebase Studio.
-
-To get started, take a look at src/app/page.tsx.
+realme by:
+  DR Mrs Jaiyeoba
+  Lawal Giyath
+  Jaiyeoba Tomilola
+  Adekunle Abdulazeez

@@ -24,7 +24,7 @@ const resources = [
     name: 'Nigeria Suicide Prevention Initiative',
     description: 'Provides suicide prevention services and counseling for individuals in crisis.',
     phone: '+2348062106493',
-    website: 'nspi.com.ng',
+    website: 'nigeriasuicideprevention.com',
   },
 ];
 
