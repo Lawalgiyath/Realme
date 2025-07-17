@@ -19,35 +19,35 @@ const onboardingSlides = [
     icon: HeartPulse,
     title: 'Welcome to Realme!',
     description: "Your personalized guide to mental wellness. Let's take a quick tour of what you can do.",
-    image: 'https://placehold.co/600x400.png',
+    image: 'https://images.unsplash.com/photo-1593468045437-a1e67d404b2a',
     aiHint: 'welcome abstract',
   },
   {
     icon: FileText,
     title: 'Understand Yourself Better',
     description: 'Start with a private AI-powered assessment. Your answers help us tailor content and resources just for you.',
-    image: 'https://placehold.co/600x400.png',
+    image: 'https://images.unsplash.com/photo-1628369446332-7204423b8b6f',
     aiHint: 'questions form',
   },
   {
     icon: Target,
     title: 'Set and Track Your Goals',
     description: 'Define what wellness means to you. Create personal goals and track your progress as you go.',
-    image: 'https://placehold.co/600x400.png',
+    image: 'https://images.unsplash.com/photo-1628260173514-93e1e8f3b7f1',
     aiHint: 'goals target',
   },
   {
     icon: GlassWater,
     title: 'Find Calm with the Worry Jar',
     description: 'Feeling anxious? Write down your worries and let our AI provide a calming, reframed thought.',
-    image: 'https://placehold.co/600x400.png',
+    image: 'https://images.unsplash.com/photo-1619965306352-65710657a70a',
     aiHint: 'calm water',
   },
   {
     icon: Library,
     title: "You're All Set!",
     description: 'Explore personalized articles, track your mood, and find local resources. Your journey starts now.',
-    image: 'https://placehold.co/600x400.png',
+    image: 'https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0',
     aiHint: 'journey path',
   },
 ];
@@ -58,12 +58,18 @@ export default function Onboarding() {
 
   const handleNext = () => {
     if (currentSlide < onboardingSlides.length - 1) {
-      setCurrentSlide(currentSlide + 1);
+      const nextButton = document.querySelector('.embla__next') as HTMLButtonElement | null;
+      nextButton?.click();
     } else {
       router.push('/dashboard');
     }
   };
   
+  const handlePrev = () => {
+      const prevButton = document.querySelector('.embla__prev') as HTMLButtonElement | null;
+      prevButton?.click();
+  }
+
   const progress = ((currentSlide + 1) / onboardingSlides.length) * 100;
 
   return (
@@ -74,7 +80,13 @@ export default function Onboarding() {
                 align: "start",
                 loop: false,
             }}
-            onSelect={(api) => setCurrentSlide(api.selectedScrollSnap())}
+            setApi={(api) => {
+                if(api) {
+                    api.on("select", () => {
+                        setCurrentSlide(api.selectedScrollSnap());
+                    });
+                }
+            }}
             className="w-full"
         >
           <CarouselContent>
@@ -83,14 +95,15 @@ export default function Onboarding() {
                 return (
                     <CarouselItem key={index}>
                         <Card>
-                        <CardContent className="flex flex-col items-center justify-center p-6 md:p-12 text-center aspect-video md:aspect-[16/10]">
-                            <div className='w-full h-48 relative rounded-lg overflow-hidden mb-6'>
+                        <CardContent className="flex flex-col items-center justify-center p-6 md:p-12 text-center">
+                           <div className='w-full h-64 md:h-80 relative rounded-lg overflow-hidden mb-6'>
                                 <Image
                                     src={slide.image}
                                     alt={slide.title}
                                     layout="fill"
                                     objectFit="cover"
                                     data-ai-hint={slide.aiHint}
+                                    className="bg-muted"
                                 />
                             </div>
                             <div className="p-2 bg-primary/10 rounded-full mb-4">
@@ -104,22 +117,25 @@ export default function Onboarding() {
                 )
             })}
           </CarouselContent>
-          <CarouselPrevious className="hidden sm:flex" />
-          <CarouselNext className="hidden sm:flex" />
+          <CarouselPrevious className="hidden sm:flex embla__prev" />
+          <CarouselNext className="hidden sm:flex embla__next" />
         </Carousel>
         
         <div className="mt-6 flex flex-col sm:flex-row items-center gap-4">
-          <div className="w-full sm:w-auto order-2 sm:order-1 flex items-center gap-2">
+          <div className="w-full sm:w-auto order-2 sm:order-1 flex items-center justify-center gap-2">
             {onboardingSlides.map((_, index) => (
               <button
                 key={index}
-                onClick={() => setCurrentSlide(index)}
-                className={`h-2 w-2 rounded-full ${currentSlide === index ? 'bg-primary' : 'bg-muted'}`}
+                onClick={() => {
+                   const carouselApi = (document.querySelector('.embla') as any)?.__embla;
+                   carouselApi?.scrollTo(index);
+                }}
+                className={`h-2 w-2 rounded-full transition-all ${currentSlide === index ? 'bg-primary w-4' : 'bg-muted'}`}
                 aria-label={`Go to slide ${index + 1}`}
               />
             ))}
           </div>
-          <Progress value={progress} className="w-full h-2 order-1 sm:order-2" />
+          <Progress value={progress} className="w-full h-2 order-1 sm:order-2 flex-1" />
           <Button onClick={handleNext} className="w-full sm:w-auto order-3" size="lg">
             {currentSlide === onboardingSlides.length - 1 ? "Go to Dashboard" : 'Next'}
           </Button>
