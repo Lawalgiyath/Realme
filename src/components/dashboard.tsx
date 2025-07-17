@@ -129,7 +129,7 @@ export default function Dashboard() {
   return (
     <div className="flex min-h-screen bg-background">
       {/* Desktop Sidebar */}
-      <aside className={cn("hidden md:block flex-shrink-0 border-r border-sidebar-border transition-all duration-300", isSidebarCollapsed ? 'md:w-20' : 'md:w-64')}>
+      <aside className={cn("hidden md:block flex-shrink-0 border-r border-sidebar-border transition-all duration-300", isSidebarCollapsed ? 'w-20' : 'w-64')}>
           <SidebarNav activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isSidebarCollapsed} toggleCollapse={toggleSidebarCollapse} />
       </aside>
 
