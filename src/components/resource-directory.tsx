@@ -26,6 +26,12 @@ const resources = [
     phone: '+2348062106493',
     website: 'nigeriasuicideprevention.com',
   },
+  {
+    name: 'Holiwells International',
+    description: 'A mental health organization providing support and resources.',
+    phone: 'Contact via website',
+    website: 'holiwellsinternational.com',
+  }
 ];
 
 export default function ResourceDirectory() {
