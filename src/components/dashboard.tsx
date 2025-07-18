@@ -14,6 +14,7 @@ import {
   ChevronsRight,
   LogOut,
   User,
+  BookHeart,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -45,6 +46,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useApp } from '@/context/app-context';
 import { useRouter } from 'next/navigation';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
+import Journal from './journal';
 
 
 const SidebarNav = ({ activeTab, navigateTo, isCollapsed, toggleCollapse }: { activeTab: string, navigateTo: (tab: string) => void, isCollapsed: boolean, toggleCollapse: () => void, className?: string }) => (
@@ -59,6 +61,7 @@ const SidebarNav = ({ activeTab, navigateTo, isCollapsed, toggleCollapse }: { ac
     <div className="flex-1 p-2 space-y-1">
         <SidebarNavItem icon={LayoutDashboard} label="Dashboard" tab="dashboard" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
         <SidebarNavItem icon={FileText} label="Assessment" tab="assessment" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
+        <SidebarNavItem icon={BookHeart} label="Journal" tab="journal" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
         <SidebarNavItem icon={Target} label="Goals" tab="goals" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
         <SidebarNavItem icon={GlassWater} label="Worry Jar" tab="worry-jar" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
         <SidebarNavItem icon={Library} label="Resources" tab="resources" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
@@ -214,6 +217,10 @@ export default function Dashboard() {
                     <FileText className="mr-2 h-4 w-4" />
                     Assessment
                     </TabsTrigger>
+                    <TabsTrigger value="journal">
+                      <BookHeart className="mr-2 h-4 w-4" />
+                      Journal
+                    </TabsTrigger>
                     <TabsTrigger value="goals">
                     <Target className="mr-2 h-4 w-4" />
                     Goals
@@ -268,6 +275,9 @@ export default function Dashboard() {
             </TabsContent>
             <TabsContent value="assessment">
               <Assessment />
+            </TabsContent>
+            <TabsContent value="journal">
+              <Journal />
             </TabsContent>
             <TabsContent value="goals">
               <WellnessGoals />
