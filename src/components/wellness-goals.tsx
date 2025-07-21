@@ -1,17 +1,22 @@
 "use client";
 
 import { useState } from 'react';
-import { Check, Plus, Trash2 } from 'lucide-react';
+import { Check, Plus, Trash2, Sparkles, Loader2, BookOpen, Wind, BrainCircuit } from 'lucide-react';
 import { useApp } from '@/context/app-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+import { personalizedContentSuggestions } from '@/ai/flows/personalized-content';
+import Image from 'next/image';
 
 export default function WellnessGoals() {
-  const { goals, setGoals } = useApp();
+  const { goals, setGoals, assessmentResult, personalizedContent, setPersonalizedContent } = useApp();
   const [newGoal, setNewGoal] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
   const handleAddGoal = () => {
     if (newGoal.trim()) {
@@ -34,6 +39,35 @@ export default function WellnessGoals() {
   const removeGoal = (id: string) => {
     setGoals(goals.filter((goal) => goal.id !== id));
   };
+
+  const handleGenerateContent = async () => {
+    if (!assessmentResult) {
+      toast({
+        variant: 'destructive',
+        title: 'Assessment Required',
+        description: 'Please complete the assessment first to get personalized content.',
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await personalizedContentSuggestions({
+        assessmentResults: assessmentResult.insights,
+        preferences: goals.map(g => g.text).join(', ') || 'General mental wellness, stress reduction, and mindfulness.',
+      });
+      setPersonalizedContent(result);
+    } catch (error) {
+      console.error('Failed to generate content:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Oh no! Something went wrong.',
+        description: 'Could not generate personalized content. Please try again.',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   
   const completedGoals = goals.filter((goal) => goal.completed).length;
   const progress = goals.length > 0 ? (completedGoals / goals.length) * 100 : 0;
@@ -41,8 +75,8 @@ export default function WellnessGoals() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Wellness Goals</CardTitle>
-        <CardDescription>Set and track your personal goals for mental wellness.</CardDescription>
+        <CardTitle>Goals & Content</CardTitle>
+        <CardDescription>Set wellness goals and get AI-powered content suggestions to help you achieve them.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="flex w-full max-w-sm items-center space-x-2">
@@ -57,13 +91,15 @@ export default function WellnessGoals() {
         </div>
         
         <div className="space-y-4">
-          <div>
-            <div className="flex justify-between mb-1">
-              <span className="text-base font-medium text-primary">Progress</span>
-              <span className="text-sm font-medium text-primary">{Math.round(progress)}%</span>
+          {goals.length > 0 && (
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className="text-base font-medium text-primary">Progress</span>
+                <span className="text-sm font-medium text-primary">{Math.round(progress)}%</span>
+              </div>
+              <Progress value={progress} />
             </div>
-            <Progress value={progress} />
-          </div>
+          )}
 
           <div className="space-y-2">
             {goals.length > 0 ? (
@@ -86,6 +122,88 @@ export default function WellnessGoals() {
               <p className="text-muted-foreground text-center py-4">No goals set yet. Add one to get started!</p>
             )}
           </div>
+        </div>
+
+        <div className="border-t pt-6">
+            <CardHeader className="p-0 mb-4">
+                <CardTitle className="flex items-center gap-2 text-xl">
+                <Sparkles className="text-primary h-5 w-5" />{' '}
+                Your AI Content Plan
+                </CardTitle>
+                <CardDescription>
+                AI suggestions based on your assessment, goals, and mood.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+                {!assessmentResult ? (
+                    <div className="text-center text-muted-foreground p-8 bg-secondary rounded-lg">
+                        <p>Complete the AI assessment to unlock your personalized content plan.</p>
+                    </div>
+                ) : loading ? (
+                     <div className="flex justify-center items-center p-8">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <p className="ml-4 text-muted-foreground">Generating your plan...</p>
+                    </div>
+                ) : !personalizedContent ? (
+                    <div className="text-center">
+                        <Button onClick={handleGenerateContent} disabled={loading}>
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        Generate My Content Plan
+                        </Button>
+                    </div>
+                ) : (
+                     <div className="grid gap-6 md:grid-cols-3">
+                        <Card>
+                            <CardContent className="p-4 md:p-6">
+                                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><BookOpen className="text-primary h-5 w-5"/> Articles</h3>
+                                <ul className="space-y-4">
+                                    {personalizedContent.articles.map((article, i) => (
+                                        <li key={i} className="flex items-start gap-4">
+                                            <Image data-ai-hint="wellness article" src="https://placehold.co/100x100.png" alt={article} width={60} height={60} className="rounded-lg aspect-square object-cover" />
+                                            <div>
+                                                <p className="font-medium text-sm leading-snug">{article}</p>
+                                                <a href="#" className="text-xs text-primary hover:underline">Read more</a>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardContent className="p-4 md:p-6">
+                                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><Wind className="text-primary h-5 w-5"/> Meditations</h3>
+                                <ul className="space-y-4">
+                                    {personalizedContent.meditations.map((meditation, i) => (
+                                        <li key={i} className="flex items-start gap-4">
+                                            <Image data-ai-hint="meditation nature" src="https://placehold.co/100x100.png" alt={meditation} width={60} height={60} className="rounded-lg aspect-square object-cover" />
+                                            <div>
+                                                <p className="font-medium text-sm leading-snug">{meditation}</p>
+                                                <a href="#" className="text-xs text-primary hover:underline">Start session</a>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardContent className="p-4 md:p-6">
+                                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><BrainCircuit className="text-primary h-5 w-5"/> Exercises</h3>
+                                <ul className="space-y-4">
+                                    {personalizedContent.exercises.map((exercise, i) => (
+                                        <li key={i} className="flex items-start gap-4">
+                                            <Image data-ai-hint="mindfulness yoga" src="https://placehold.co/100x100.png" alt={exercise} width={60} height={60} className="rounded-lg aspect-square object-cover" />
+                                            <div>
+                                                <p className="font-medium text-sm leading-snug">{exercise}</p>
+                                                <a href="#" className="text-xs text-primary hover:underline">Try it now</a>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </CardContent>
+                        </Card>
+                    </div>
+                )}
+            </CardContent>
         </div>
       </CardContent>
     </Card>

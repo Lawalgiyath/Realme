@@ -8,7 +8,6 @@ import {
   Sparkles,
   FileText,
   Target,
-  GlassWater,
   PanelLeft,
   ChevronsLeft,
   ChevronsRight,
@@ -31,9 +30,7 @@ import WellnessGoals from './wellness-goals';
 import ResourceDirectory from './resource-directory';
 import MoodTracker from './mood-tracker';
 import ProgressChart from './progress-chart';
-import PersonalizedContent from './personalized-content';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import WorryJar from './worry-jar';
 import {
   Sheet,
   SheetContent,
@@ -62,8 +59,7 @@ const SidebarNav = ({ activeTab, navigateTo, isCollapsed, toggleCollapse }: { ac
         <SidebarNavItem icon={LayoutDashboard} label="Dashboard" tab="dashboard" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
         <SidebarNavItem icon={FileText} label="Assessment" tab="assessment" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
         <SidebarNavItem icon={BookHeart} label="Journal" tab="journal" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
-        <SidebarNavItem icon={Target} label="Goals" tab="goals" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
-        <SidebarNavItem icon={GlassWater} label="Worry Jar" tab="worry-jar" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
+        <SidebarNavItem icon={Target} label="Goals & Content" tab="goals" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
         <SidebarNavItem icon={Library} label="Resources" tab="resources" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
     </div>
     </TooltipProvider>
@@ -223,11 +219,7 @@ export default function Dashboard() {
                     </TabsTrigger>
                     <TabsTrigger value="goals">
                     <Target className="mr-2 h-4 w-4" />
-                    Goals
-                    </TabsTrigger>
-                    <TabsTrigger value="worry-jar">
-                    <GlassWater className="mr-2 h-4 w-4" />
-                    Worry Jar
+                    Goals & Content
                     </TabsTrigger>
                     <TabsTrigger value="resources">
                     <Library className="mr-2 h-4 w-4" />
@@ -255,21 +247,7 @@ export default function Dashboard() {
                     <MoodTracker />
                 </div>
                 <div>
-                    <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-xl">
-                        <Sparkles className="text-primary h-5 w-5" />{' '}
-                        Personalized For You
-                        </CardTitle>
-                        <CardDescription>
-                        AI-driven content suggestions based on your assessment
-                        results and preferences.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <PersonalizedContent />
-                    </CardContent>
-                    </Card>
+                  <WellnessGoals />
                 </div>
               </div>
             </TabsContent>
@@ -281,9 +259,6 @@ export default function Dashboard() {
             </TabsContent>
             <TabsContent value="goals">
               <WellnessGoals />
-            </TabsContent>
-            <TabsContent value="worry-jar">
-              <WorryJar />
             </TabsContent>
             <TabsContent value="resources">
               <ResourceDirectory />

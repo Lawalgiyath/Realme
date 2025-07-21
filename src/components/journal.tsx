@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -9,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { analyzeJournalEntry } from '@/ai/flows/journal-analysis-flow';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { reframeWorry } from '@/ai/flows/worry-jar-flow';
 
 const prompts = [
     "What's on your mind today?",
@@ -22,6 +22,7 @@ const prompts = [
 export default function Journal() {
   const [entry, setEntry] = useState('');
   const [analysis, setAnalysis] = useState<{ summary: string; reflection: string } | null>(null);
+  const [reframedThought, setReframedThought] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const [placeholder, setPlaceholder] = useState('');
@@ -31,17 +32,25 @@ export default function Journal() {
   }, []);
 
   const handleAnalyzeEntry = async () => {
-    if (entry.trim().length < 50) {
+    // If the entry is short, treat it as a "worry" for a quick reframe.
+    if (entry.trim().length > 10 && entry.trim().length < 100) {
+        handleWorrySubmit();
+        return;
+    }
+      
+    if (entry.trim().length < 100) {
       toast({
         variant: 'destructive',
         title: 'Please write a bit more.',
-        description: 'Your journal entry should be at least 50 characters long for a meaningful analysis.',
+        description: 'For a full analysis, your journal entry should be at least 100 characters long. For shorter thoughts, we provide a quick reflection.',
       });
       return;
     }
 
     setLoading(true);
     setAnalysis(null);
+    setReframedThought('');
+
     try {
       const result = await analyzeJournalEntry({ journalEntry: entry });
       setAnalysis(result);
@@ -57,6 +66,25 @@ export default function Journal() {
     }
   };
 
+  const handleWorrySubmit = async () => {
+    setLoading(true);
+    setAnalysis(null);
+    setReframedThought('');
+    try {
+      const result = await reframeWorry({ worry: entry });
+      setReframedThought(result.reframedThought);
+    } catch (error) {
+       console.error('Failed to get reframed thought:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Oh no! Something went wrong.',
+        description: 'Could not get a response from the AI. Please try again.',
+      });
+    } finally {
+        setLoading(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -65,9 +93,9 @@ export default function Journal() {
                 <BookHeart className="h-8 w-8 text-primary" />
             </div>
             <div>
-                <CardTitle>My AI Journal</CardTitle>
+                <CardTitle>AI Journal</CardTitle>
                 <CardDescription>
-                Reflect on your thoughts and feelings. Get a supportive perspective from your AI companion.
+                Write a short worry or a long reflection. Get a supportive perspective from your AI companion.
                 </CardDescription>
             </div>
         </div>
@@ -93,11 +121,21 @@ export default function Journal() {
             ) : (
               <>
                 <Wand2 className="mr-2 h-4 w-4" />
-                Analyze My Entry
+                Analyze My Thoughts
               </>
             )}
           </Button>
         </div>
+
+        {reframedThought && (
+            <Alert className="bg-secondary border-secondary-foreground/20 animate-in fade-in-50">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <AlertTitle className="font-headline">A Calmer Thought</AlertTitle>
+              <AlertDescription className="mt-2 text-lg text-foreground">
+                <p>{reframedThought}</p>
+              </AlertDescription>
+            </Alert>
+        )}
 
         {analysis && (
             <Alert className="bg-secondary border-secondary-foreground/20 animate-in fade-in-50">

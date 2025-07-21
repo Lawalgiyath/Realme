@@ -1,11 +1,9 @@
-// This file is machine-generated - edit at your own risk.
-
 'use server';
 
 /**
  * @fileOverview AI-powered mental health assessment flow.
  *
- * This flow takes user's answers to a series of questions and provides personalized insights and
+ * This flow takes user's answers to a series of open-ended questions and provides personalized insights and
  * recommendations for mental health resources.
  *
  * @exports mentalHealthAssessment - The main function to trigger the mental health assessment flow.
@@ -18,15 +16,18 @@ import {z} from 'genkit';
 
 const MentalHealthAssessmentInputSchema = z.object({
   answers: z.array(
-    z.string().describe('Answer to a mental health assessment question')
+    z.object({
+      question: z.string(),
+      answer: z.string(),
+    })
   ).describe('List of answers to mental health assessment questions'),
 });
 
 export type MentalHealthAssessmentInput = z.infer<typeof MentalHealthAssessmentInputSchema>;
 
 const MentalHealthAssessmentOutputSchema = z.object({
-  insights: z.string().describe('Personalized insights based on the assessment answers'),
-  recommendations: z.string().describe('Recommended mental health resources'),
+  insights: z.string().describe('A comprehensive summary of the user\'s potential emotional state, key themes, and areas of concern based on their answers. This should be empathetic and non-clinical.'),
+  recommendations: z.string().describe('A list of 3-5 actionable, personalized recommendations for the user. These can include specific types of exercises, journaling prompts, or areas to focus on for goal-setting.'),
 });
 
 export type MentalHealthAssessmentOutput = z.infer<typeof MentalHealthAssessmentOutputSchema>;
@@ -39,9 +40,19 @@ const mentalHealthAssessmentPrompt = ai.definePrompt({
   name: 'mentalHealthAssessmentPrompt',
   input: {schema: MentalHealthAssessmentInputSchema},
   output: {schema: MentalHealthAssessmentOutputSchema},
-  prompt: `You are an AI mental health assistant. Analyze the user's answers to the following mental health assessment questions and provide personalized insights and recommendations for mental health resources.
+  prompt: `You are an AI mental health assistant. Your role is to provide supportive and insightful feedback based on a user's self-assessment. DO NOT PROVIDE A DIAGNOSIS or use clinical terms. Your tone should be encouraging and empathetic.
 
-Answers: {{#each answers}}{{{this}}}\n{{/each}}`,
+Analyze the user's answers to the following questions.
+
+{{#each answers}}
+Question: {{{question}}}
+Answer: {{{answer}}}
+---
+{{/each}}
+
+Based on their answers, provide:
+1.  **Insights:** A holistic summary of their feelings and reported experiences. Identify key themes (e.g., stress at work, feelings of isolation, low energy).
+2.  **Recommendations:** A few gentle, actionable next steps. Suggest things like mindfulness exercises, types of goals they could set, or topics they might want to explore in articles or meditations. Keep it simple and encouraging.`,
 });
 
 const mentalHealthAssessmentFlow = ai.defineFlow(
