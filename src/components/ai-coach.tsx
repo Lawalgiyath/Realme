@@ -29,6 +29,7 @@ export default function AiCoach() {
   const [result, setResult] = useState<DailyPlannerOutput | null>(null);
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const activeFieldRef = useRef<'activities' | 'mealTarget' | 'dietaryRestrictions'>('activities');
 
   const form = useForm<PlannerFormValues>({
     resolver: zodResolver(plannerSchema),
@@ -48,17 +49,31 @@ export default function AiCoach() {
       recognitionRef.current.interimResults = true;
 
       recognitionRef.current.onresult = (event: any) => {
-        let interimTranscript = '';
         let finalTranscript = '';
-        for (let i = 0; i < event.results.length; i++) {
+        for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcript = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
             finalTranscript += transcript + ' ';
-          } else {
-            interimTranscript += transcript;
           }
         }
-        form.setValue('activities', form.getValues('activities') + finalTranscript);
+        
+        if (finalTranscript.toLowerCase().includes('meal plan')) {
+            const cleanTranscript = finalTranscript.replace(/meal plan/i, '').trim();
+            if (cleanTranscript) {
+              form.setValue('activities', form.getValues('activities') + cleanTranscript + ' ');
+            }
+            form.setFocus('mealTarget');
+            activeFieldRef.current = 'mealTarget';
+        } else if (finalTranscript.toLowerCase().includes('dietary restrictions')) {
+            const cleanTranscript = finalTranscript.replace(/dietary restrictions/i, '').trim();
+             if (cleanTranscript) {
+              form.setValue(activeFieldRef.current, form.getValues(activeFieldRef.current) + cleanTranscript + ' ');
+            }
+            form.setFocus('dietaryRestrictions');
+            activeFieldRef.current = 'dietaryRestrictions';
+        } else {
+             form.setValue(activeFieldRef.current, form.getValues(activeFieldRef.current) + finalTranscript);
+        }
       };
 
       recognitionRef.current.onerror = (event: any) => {
@@ -80,7 +95,7 @@ export default function AiCoach() {
     }
   }, [form, toast]);
 
-  const handleToggleListening = async () => {
+  const handleToggleListening = async (field: 'activities' | 'mealTarget' | 'dietaryRestrictions') => {
     if (isListening) {
       recognitionRef.current?.stop();
       setIsListening(false);
@@ -97,8 +112,8 @@ export default function AiCoach() {
     }
 
     try {
-        // This will prompt for permission
         await navigator.mediaDevices.getUserMedia({ audio: true });
+        activeFieldRef.current = field;
         recognitionRef.current?.start();
         setIsListening(true);
     } catch (err) {
@@ -152,16 +167,16 @@ export default function AiCoach() {
               name="activities"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-base flex items-center justify-between">
+                   <FormLabel className="text-base flex items-center justify-between">
                     What's on your schedule today?
-                     <Button
+                    <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        onClick={handleToggleListening}
-                        className={cn(isListening && 'text-destructive')}
+                        onClick={() => handleToggleListening('activities')}
+                        className={cn(isListening && activeFieldRef.current === 'activities' && 'text-destructive')}
                         >
-                        {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                        {isListening && activeFieldRef.current === 'activities' ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
                         <span className="sr-only">{isListening ? 'Stop listening' : 'Start listening'}</span>
                     </Button>
                   </FormLabel>
@@ -169,11 +184,12 @@ export default function AiCoach() {
                     <Textarea
                     placeholder="e.g., Morning meeting at 10am, finish project report, gym session in the evening..."
                     rows={5}
+                    onFocus={() => activeFieldRef.current = 'activities'}
                     {...field}
                     />
                   </FormControl>
                   <FormDescription>
-                    List your tasks, appointments, and anything else you need to do.
+                    List your tasks, appointments, and anything else you need to do. Say "meal plan" to continue.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -185,9 +201,24 @@ export default function AiCoach() {
                     name="mealTarget"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel className="text-base">What's your meal target?</FormLabel>
+                        <FormLabel className="text-base flex items-center justify-between">What's your meal target?
+                             <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleToggleListening('mealTarget')}
+                                className={cn(isListening && activeFieldRef.current === 'mealTarget' && 'text-destructive')}
+                                >
+                                {isListening && activeFieldRef.current === 'mealTarget' ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                                <span className="sr-only">{isListening ? 'Stop listening' : 'Start listening'}</span>
+                            </Button>
+                        </FormLabel>
                         <FormControl>
-                            <Input placeholder="e.g., High protein, low carb, balanced" {...field} />
+                            <Input 
+                                placeholder="e.g., High protein, low carb, balanced" 
+                                onFocus={() => activeFieldRef.current = 'mealTarget'}
+                                {...field} 
+                            />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -198,9 +229,24 @@ export default function AiCoach() {
                     name="dietaryRestrictions"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel className="text-base">Any dietary restrictions?</FormLabel>
+                        <FormLabel className="text-base flex items-center justify-between">Any dietary restrictions?
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleToggleListening('dietaryRestrictions')}
+                                className={cn(isListening && activeFieldRef.current === 'dietaryRestrictions' && 'text-destructive')}
+                                >
+                                {isListening && activeFieldRef.current === 'dietaryRestrictions' ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                                <span className="sr-only">{isListening ? 'Stop listening' : 'Start listening'}</span>
+                            </Button>
+                        </FormLabel>
                         <FormControl>
-                            <Input placeholder="e.g., Vegetarian, nut allergy" {...field} />
+                            <Input 
+                                placeholder="e.g., Vegetarian, nut allergy" 
+                                onFocus={() => activeFieldRef.current = 'dietaryRestrictions'}
+                                {...field} 
+                            />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
