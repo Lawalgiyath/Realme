@@ -50,6 +50,7 @@ import Journal from './journal';
 import AiCoach from './ai-coach';
 import Achievements from './achievements';
 import ConversationHistory from './conversation-history';
+import BeInspired from './be-inspired';
 
 
 const SidebarNav = ({ activeTab, navigateTo, isCollapsed, toggleCollapse }: { activeTab: string, navigateTo: (tab: string) => void, isCollapsed: boolean, toggleCollapse: () => void, className?: string }) => (
@@ -67,6 +68,7 @@ const SidebarNav = ({ activeTab, navigateTo, isCollapsed, toggleCollapse }: { ac
         <SidebarNavItem icon={FileText} label="Assessment" tab="assessment" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
         <SidebarNavItem icon={BookHeart} label="Journal" tab="journal" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
         <SidebarNavItem icon={Target} label="Goals & Content" tab="goals" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
+        <SidebarNavItem icon={Sparkles} label="Be Inspired" tab="inspired" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
         <SidebarNavItem icon={History} label="History" tab="history" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
         <SidebarNavItem icon={Library} label="Resources" tab="resources" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
     </div>
@@ -233,6 +235,10 @@ export default function Dashboard() {
                     <Target className="mr-2 h-4 w-4" />
                     Goals & Content
                     </TabsTrigger>
+                    <TabsTrigger value="inspired">
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Be Inspired
+                    </TabsTrigger>
                     <TabsTrigger value="history">
                       <History className="mr-2 h-4 w-4" />
                       History
@@ -279,6 +285,9 @@ export default function Dashboard() {
             </TabsContent>
             <TabsContent value="goals">
               <WellnessGoals />
+            </TabsContent>
+            <TabsContent value="inspired">
+              <BeInspired />
             </TabsContent>
             <TabsContent value="history">
               <ConversationHistory />

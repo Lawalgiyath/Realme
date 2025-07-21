@@ -2,7 +2,7 @@
 
 import { useApp } from "@/context/app-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
-import { Trophy, Award, Star, BookUser } from "lucide-react";
+import { Trophy, Award, Star, BookUser, BarChart, Gem, ShieldQuestion } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "./ui/tooltip";
 
@@ -11,6 +11,9 @@ const achievementIcons = {
     assessmentComplete: BookUser,
     firstJournal: Award,
     contentGenerated: Trophy,
+    fiveGoalsDone: Gem,
+    moodWeek: BarChart,
+    firstResource: ShieldQuestion,
 }
 
 export default function Achievements() {
@@ -27,18 +30,18 @@ export default function Achievements() {
             </CardHeader>
             <CardContent className="flex-1 flex items-center justify-center">
                 <TooltipProvider>
-                    <div className="grid grid-cols-2 gap-4 md:gap-6">
+                    <div className="grid grid-cols-3 md:grid-cols-4 gap-4">
                         {achievements.map((achievement) => {
-                            const Icon = achievementIcons[achievement.id];
+                            const Icon = achievementIcons[achievement.id as keyof typeof achievementIcons] || Star;
                             return (
                                 <Tooltip key={achievement.id}>
                                     <TooltipTrigger asChild>
                                         <div className={cn(
-                                            "flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all duration-300",
+                                            "flex flex-col items-center justify-center gap-2 p-3 aspect-square rounded-lg border-2 transition-all duration-300",
                                             achievement.unlocked ? "border-primary/50 bg-primary/10 text-primary" : "border-dashed border-muted-foreground/30 text-muted-foreground/50"
                                         )}>
-                                            <Icon className="h-10 w-10" />
-                                            <p className="text-sm font-semibold text-center">{achievement.name}</p>
+                                            <Icon className="h-8 w-8 md:h-10 md:w-10" />
+                                            <p className="text-xs font-semibold text-center leading-tight">{achievement.name}</p>
                                         </div>
                                     </TooltipTrigger>
                                     <TooltipContent>
