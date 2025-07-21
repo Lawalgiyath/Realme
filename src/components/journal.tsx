@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
-import { BookHeart, Loader2, Sparkles, Wand2, Mic, MicOff } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { BookHeart, Loader2, Sparkles, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -26,55 +26,10 @@ export default function Journal() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const [placeholder, setPlaceholder] = useState('');
-  const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   useEffect(() => {
     setPlaceholder(prompts[Math.floor(Math.random() * prompts.length)]);
-    
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = true;
-      recognitionRef.current.interimResults = true;
-      recognitionRef.current.onresult = (event) => {
-        let transcript = '';
-        for (let i = 0; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript;
-        }
-        setEntry(transcript);
-      };
-      recognitionRef.current.onerror = (event) => {
-        console.error('Speech recognition error', event.error);
-        toast({
-            variant: 'destructive',
-            title: 'Voice Error',
-            description: `An error occurred with voice recognition: ${event.error}`,
-        });
-        setIsListening(false);
-      };
-      recognitionRef.current.onend = () => {
-        setIsListening(false);
-      };
-    }
-  }, [toast]);
-
-  const handleMicClick = () => {
-    if (!recognitionRef.current) {
-        toast({
-            variant: 'destructive',
-            title: 'Not Supported',
-            description: 'Your browser does not support voice recognition.',
-        });
-        return;
-    }
-    if (isListening) {
-      recognitionRef.current.stop();
-    } else {
-      recognitionRef.current.start();
-    }
-    setIsListening(!isListening);
-  };
+  }, []);
 
   const handleAnalyzeEntry = async () => {
     if (entry.trim().length > 10 && entry.trim().length < 100) {
@@ -146,25 +101,14 @@ export default function Journal() {
       </CardHeader>
       <CardContent className="space-y-6">
         <div>
-            <div className="relative">
-                <Textarea
-                    placeholder={placeholder}
-                    value={entry}
-                    onChange={(e) => setEntry(e.target.value)}
-                    rows={10}
-                    disabled={loading}
-                    className="text-base"
-                />
-                <Button
-                    type="button"
-                    size="icon"
-                    variant={isListening ? 'destructive' : 'ghost'}
-                    className="absolute bottom-2 right-2"
-                    onClick={handleMicClick}
-                >
-                    {isListening ? <MicOff /> : <Mic />}
-                </Button>
-            </div>
+            <Textarea
+                placeholder={placeholder}
+                value={entry}
+                onChange={(e) => setEntry(e.target.value)}
+                rows={10}
+                disabled={loading}
+                className="text-base"
+            />
         </div>
         <div className="flex justify-end">
           <Button onClick={handleAnalyzeEntry} disabled={loading || !entry.trim()}>

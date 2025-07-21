@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Bot, Utensils, Calendar, Loader2, Sparkles, Wand2, Mic, MicOff } from 'lucide-react';
+import { Bot, Utensils, Calendar, Loader2, Sparkles, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -26,8 +26,6 @@ export default function AiCoach() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DailyPlannerOutput | null>(null);
-  const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   const form = useForm<PlannerFormValues>({
     resolver: zodResolver(plannerSchema),
@@ -37,52 +35,6 @@ export default function AiCoach() {
       dietaryRestrictions: '',
     },
   });
-
-  useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = true;
-      recognitionRef.current.interimResults = true;
-      recognitionRef.current.onresult = (event) => {
-        let transcript = '';
-        for (let i = 0; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript;
-        }
-        form.setValue('activities', transcript);
-      };
-      recognitionRef.current.onerror = (event) => {
-        console.error('Speech recognition error', event.error);
-        toast({
-            variant: 'destructive',
-            title: 'Voice Error',
-            description: `An error occurred with voice recognition: ${event.error}`,
-        });
-        setIsListening(false);
-      };
-      recognitionRef.current.onend = () => {
-        setIsListening(false);
-      };
-    }
-  }, [form, toast]);
-
-  const handleMicClick = () => {
-    if (!recognitionRef.current) {
-        toast({
-            variant: 'destructive',
-            title: 'Not Supported',
-            description: 'Your browser does not support voice recognition.',
-        });
-        return;
-    }
-    if (isListening) {
-      recognitionRef.current.stop();
-    } else {
-      recognitionRef.current.start();
-    }
-    setIsListening(!isListening);
-  };
-
 
   async function onSubmit(data: PlannerFormValues) {
     setLoading(true);
@@ -127,25 +79,14 @@ export default function AiCoach() {
                 <FormItem>
                   <FormLabel className="text-base">What's on your schedule today?</FormLabel>
                   <FormControl>
-                    <div className="relative">
-                        <Textarea
-                        placeholder="e.g., Morning meeting at 10am, finish project report, gym session in the evening..."
-                        rows={5}
-                        {...field}
-                        />
-                        <Button
-                            type="button"
-                            size="icon"
-                            variant={isListening ? 'destructive' : 'ghost'}
-                            className="absolute bottom-2 right-2"
-                            onClick={handleMicClick}
-                        >
-                            {isListening ? <MicOff /> : <Mic />}
-                        </Button>
-                    </div>
+                    <Textarea
+                    placeholder="e.g., Morning meeting at 10am, finish project report, gym session in the evening..."
+                    rows={5}
+                    {...field}
+                    />
                   </FormControl>
                   <FormDescription>
-                    List your tasks, appointments, and anything else you need to do. You can also use the microphone.
+                    List your tasks, appointments, and anything else you need to do.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
