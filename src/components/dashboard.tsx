@@ -14,6 +14,7 @@ import {
   LogOut,
   User,
   BookHeart,
+  Bot,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,7 @@ import { useApp } from '@/context/app-context';
 import { useRouter } from 'next/navigation';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
 import Journal from './journal';
+import AiCoach from './ai-coach';
 
 
 const SidebarNav = ({ activeTab, navigateTo, isCollapsed, toggleCollapse }: { activeTab: string, navigateTo: (tab: string) => void, isCollapsed: boolean, toggleCollapse: () => void, className?: string }) => (
@@ -57,6 +59,7 @@ const SidebarNav = ({ activeTab, navigateTo, isCollapsed, toggleCollapse }: { ac
     <TooltipProvider delayDuration={0}>
     <div className="flex-1 p-2 space-y-1">
         <SidebarNavItem icon={LayoutDashboard} label="Dashboard" tab="dashboard" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
+        <SidebarNavItem icon={Bot} label="AI Coach" tab="coach" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
         <SidebarNavItem icon={FileText} label="Assessment" tab="assessment" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
         <SidebarNavItem icon={BookHeart} label="Journal" tab="journal" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
         <SidebarNavItem icon={Target} label="Goals & Content" tab="goals" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
@@ -209,6 +212,10 @@ export default function Dashboard() {
                     <LayoutDashboard className="mr-2 h-4 w-4" />
                     Dashboard
                     </TabsTrigger>
+                     <TabsTrigger value="coach">
+                      <Bot className="mr-2 h-4 w-4" />
+                      AI Coach
+                    </TabsTrigger>
                     <TabsTrigger value="assessment">
                     <FileText className="mr-2 h-4 w-4" />
                     Assessment
@@ -250,6 +257,9 @@ export default function Dashboard() {
                   <WellnessGoals />
                 </div>
               </div>
+            </TabsContent>
+            <TabsContent value="coach">
+              <AiCoach />
             </TabsContent>
             <TabsContent value="assessment">
               <Assessment />
