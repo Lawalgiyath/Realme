@@ -2,7 +2,7 @@
 
 import type { PersonalizedContentOutput } from '@/ai/flows/personalized-content';
 import type { MentalHealthAssessmentOutput } from '@/ai/flows/mental-health-assessment';
-import React, { createContext, useState, useContext, ReactNode, useMemo, useEffect } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useMemo, useEffect, useCallback } from 'react';
 
 export interface Mood {
   mood: 'Happy' | 'Calm' | 'Okay' | 'Anxious' | 'Sad';
@@ -22,6 +22,24 @@ export interface User {
   avatar: string;
 }
 
+export type AchievementKey = 'firstGoal' | 'assessmentComplete' | 'firstJournal' | 'contentGenerated';
+
+export interface Achievement {
+  id: AchievementKey;
+  name: string;
+  description: string;
+  unlocked: boolean;
+}
+
+export interface Interaction {
+    id: string;
+    type: 'Journal' | 'Worry Jar' | 'Assessment' | 'Planner';
+    title: string;
+    content: string;
+    timestamp: string;
+    data: any;
+}
+
 interface AppContextType {
   moods: Mood[];
   setMoods: React.Dispatch<React.SetStateAction<Mood[]>>;
@@ -33,9 +51,13 @@ interface AppContextType {
   setPersonalizedContent: React.Dispatch<React.SetStateAction<PersonalizedContentOutput | null>>;
   user: User | null;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
-  login: (user: User) => void;
+  login: (user: Omit<User, 'avatar'>) => void;
   logout: () => void;
   loading: boolean;
+  achievements: Achievement[];
+  addAchievement: (key: AchievementKey) => void;
+  interactions: Interaction[];
+  addInteraction: (interaction: Interaction) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -43,6 +65,14 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 const animalAvatars = [
   "bear", "cat", "dog", "fox", "koala", "lion", "panda", "penguin", "rabbit", "tiger"
 ];
+
+const initialAchievements: Achievement[] = [
+    { id: 'firstGoal', name: 'Goal Setter', description: 'You set your first wellness goal!', unlocked: false },
+    { id: 'assessmentComplete', name: 'Self-Explorer', description: 'You completed your first assessment.', unlocked: false },
+    { id: 'firstJournal', name: 'Reflective Mind', description: 'You wrote your first journal entry.', unlocked: false },
+    { id: 'contentGenerated', name: 'Pathfinder', description: 'You generated your first personalized content plan.', unlocked: false },
+];
+
 
 function getRandomAvatar() {
     const animal = animalAvatars[Math.floor(Math.random() * animalAvatars.length)];
@@ -56,16 +86,25 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [personalizedContent, setPersonalizedContent] = useState<PersonalizedContentOutput | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [achievements, setAchievements] = useState<Achievement[]>(initialAchievements);
+  const [interactions, setInteractions] = useState<Interaction[]>([]);
 
   useEffect(() => {
     try {
       const storedUser = localStorage.getItem('realme-user');
       if (storedUser) {
-        setUser(JSON.parse(storedUser));
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        // Load other user-specific data
+        const storedAchievements = localStorage.getItem(`realme-achievements-${parsedUser.email}`);
+        if(storedAchievements) setAchievements(JSON.parse(storedAchievements));
+        
+        const storedInteractions = localStorage.getItem(`realme-interactions-${parsedUser.email}`);
+        if(storedInteractions) setInteractions(JSON.parse(storedInteractions));
+
       }
     } catch (error) {
-      console.error("Failed to parse user from localStorage", error);
-      localStorage.removeItem('realme-user');
+      console.error("Failed to parse data from localStorage", error);
     } finally {
         setLoading(false);
     }
@@ -75,16 +114,41 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const newUser: User = { ...userData, avatar: getRandomAvatar() };
     localStorage.setItem('realme-user', JSON.stringify(newUser));
     setUser(newUser);
+    // Reset data for new user
+    setAchievements(initialAchievements);
+    setInteractions([]);
   };
 
   const logout = () => {
     localStorage.removeItem('realme-user');
+    // We don't remove achievements or interactions so they can persist if the user logs back in
     setUser(null);
     setAssessmentResult(null);
     setPersonalizedContent(null);
     setGoals([]);
     setMoods([]);
   };
+
+  const addAchievement = useCallback((key: AchievementKey) => {
+    setAchievements(prev => {
+        const newState = prev.map(a => a.id === key ? { ...a, unlocked: true } : a);
+        if (user) {
+            localStorage.setItem(`realme-achievements-${user.email}`, JSON.stringify(newState));
+        }
+        return newState;
+    });
+  }, [user]);
+
+  const addInteraction = useCallback((interaction: Interaction) => {
+    setInteractions(prev => {
+        const newState = [interaction, ...prev];
+        if (user) {
+            localStorage.setItem(`realme-interactions-${user.email}`, JSON.stringify(newState));
+        }
+        return newState;
+    });
+  }, [user]);
+
 
   const value = useMemo(() => ({
     moods,
@@ -99,8 +163,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setUser,
     login,
     logout,
-    loading
-  }), [moods, goals, assessmentResult, personalizedContent, user, loading]);
+    loading,
+    achievements,
+    addAchievement,
+    interactions,
+    addInteraction,
+  }), [moods, goals, assessmentResult, personalizedContent, user, loading, achievements, addAchievement, interactions, addInteraction]);
 
   return (
     <AppContext.Provider value={value as AppContextType}>

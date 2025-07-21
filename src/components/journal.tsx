@@ -10,6 +10,7 @@ import { analyzeJournalEntry } from '@/ai/flows/journal-analysis-flow';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { reframeWorry } from '@/ai/flows/worry-jar-flow';
 import { cn } from '@/lib/utils';
+import { useApp } from '@/context/app-context';
 
 const prompts = [
     "What's on your mind today?",
@@ -29,6 +30,7 @@ export default function Journal() {
   const [placeholder, setPlaceholder] = useState('');
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const { addAchievement, addInteraction } = useApp();
 
   useEffect(() => {
     setPlaceholder(prompts[Math.floor(Math.random() * prompts.length)]);
@@ -98,20 +100,27 @@ export default function Journal() {
   };
 
   const handleAnalyzeEntry = async () => {
-    if (entry.trim().length > 10 && entry.trim().length < 100) {
-        handleWorrySubmit();
-        return;
-    }
-      
-    if (entry.trim().length < 100) {
+    if (entry.trim().length < 10) {
       toast({
         variant: 'destructive',
         title: 'Please write a bit more.',
-        description: 'For a full analysis, your journal entry should be at least 100 characters long. For shorter thoughts, we provide a quick reflection.',
+        description: 'Your entry should be at least 10 characters long.',
       });
       return;
     }
 
+    addAchievement('firstJournal');
+    if (entry.trim().length >= 10 && entry.trim().length < 100) {
+        handleWorrySubmit();
+        return;
+    }
+      
+    if (entry.trim().length >= 100) {
+      handleFullAnalysis();
+    }
+  };
+
+  const handleFullAnalysis = async () => {
     setLoading(true);
     setAnalysis(null);
     setReframedThought('');
@@ -119,6 +128,14 @@ export default function Journal() {
     try {
       const result = await analyzeJournalEntry({ journalEntry: entry });
       setAnalysis(result);
+      addInteraction({
+        id: `journal-${Date.now()}`,
+        type: 'Journal',
+        title: 'Journal Entry Analysis',
+        content: result.summary,
+        timestamp: new Date().toISOString(),
+        data: { request: { journalEntry: entry }, response: result },
+      });
     } catch (error) {
       console.error('Failed to analyze journal entry:', error);
       toast({
@@ -129,7 +146,7 @@ export default function Journal() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const handleWorrySubmit = async () => {
     setLoading(true);
@@ -138,6 +155,14 @@ export default function Journal() {
     try {
       const result = await reframeWorry({ worry: entry });
       setReframedThought(result.reframedThought);
+       addInteraction({
+        id: `worry-${Date.now()}`,
+        type: 'Worry Jar',
+        title: 'Worry Reframed',
+        content: result.reframedThought,
+        timestamp: new Date().toISOString(),
+        data: { request: { worry: entry }, response: result },
+      });
     } catch (error) {
        console.error('Failed to get reframed thought:', error);
       toast({

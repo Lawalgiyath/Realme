@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { planDay, DailyPlannerOutput } from '@/ai/flows/daily-planner-flow';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { cn } from '@/lib/utils';
+import { useApp } from '@/context/app-context';
 
 const plannerSchema = z.object({
   activities: z.string().min(10, 'Please describe your day in a bit more detail.'),
@@ -30,6 +31,7 @@ export default function AiCoach() {
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
   const activeFieldRef = useRef<'activities' | 'mealTarget' | 'dietaryRestrictions'>('activities');
+  const { addInteraction } = useApp();
 
   const form = useForm<PlannerFormValues>({
     resolver: zodResolver(plannerSchema),
@@ -41,7 +43,6 @@ export default function AiCoach() {
   });
 
   useEffect(() => {
-    // Check for browser support
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       recognitionRef.current = new SpeechRecognition();
@@ -51,28 +52,29 @@ export default function AiCoach() {
       recognitionRef.current.onresult = (event: any) => {
         let finalTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
-            finalTranscript += transcript + ' ';
+            finalTranscript += event.results[i][0].transcript + ' ';
           }
         }
         
-        if (finalTranscript.toLowerCase().includes('meal plan')) {
-            const cleanTranscript = finalTranscript.replace(/meal plan/i, '').trim();
-            if (cleanTranscript) {
-              form.setValue('activities', form.getValues('activities') + cleanTranscript + ' ');
-            }
-            form.setFocus('mealTarget');
-            activeFieldRef.current = 'mealTarget';
-        } else if (finalTranscript.toLowerCase().includes('dietary restrictions')) {
+        const lowerCaseTranscript = finalTranscript.toLowerCase();
+
+        if (lowerCaseTranscript.includes('dietary restrictions')) {
             const cleanTranscript = finalTranscript.replace(/dietary restrictions/i, '').trim();
              if (cleanTranscript) {
-              form.setValue(activeFieldRef.current, form.getValues(activeFieldRef.current) + cleanTranscript + ' ');
+              form.setValue(activeFieldRef.current, (form.getValues(activeFieldRef.current) || '') + cleanTranscript + ' ');
             }
             form.setFocus('dietaryRestrictions');
             activeFieldRef.current = 'dietaryRestrictions';
+        } else if (lowerCaseTranscript.includes('meal plan')) {
+            const cleanTranscript = finalTranscript.replace(/meal plan/i, '').trim();
+            if (cleanTranscript) {
+              form.setValue(activeFieldRef.current, (form.getValues(activeFieldRef.current) || '') + cleanTranscript + ' ');
+            }
+            form.setFocus('mealTarget');
+            activeFieldRef.current = 'mealTarget';
         } else {
-             form.setValue(activeFieldRef.current, form.getValues(activeFieldRef.current) + finalTranscript);
+             form.setValue(activeFieldRef.current, (form.getValues(activeFieldRef.current) || '') + finalTranscript);
         }
       };
 
@@ -132,6 +134,15 @@ export default function AiCoach() {
     try {
       const plan = await planDay(data);
       setResult(plan);
+      addInteraction({
+        id: `plan-${Date.now()}`,
+        type: 'Planner',
+        title: 'Daily Plan Generated',
+        content: `Plan for: ${data.activities.substring(0, 50)}...`,
+        timestamp: new Date().toISOString(),
+        data: { request: data, response: plan },
+      });
+
     } catch (error) {
       console.error('Failed to generate plan:', error);
       toast({
@@ -189,7 +200,7 @@ export default function AiCoach() {
                     />
                   </FormControl>
                   <FormDescription>
-                    List your tasks, appointments, and anything else you need to do. Say "meal plan" to continue.
+                    List your tasks, then say "meal plan" to continue, or "dietary restrictions" to add preferences.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

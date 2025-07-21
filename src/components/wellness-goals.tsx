@@ -13,13 +13,14 @@ import { personalizedContentSuggestions } from '@/ai/flows/personalized-content'
 import Image from 'next/image';
 
 export default function WellnessGoals() {
-  const { goals, setGoals, assessmentResult, personalizedContent, setPersonalizedContent } = useApp();
+  const { goals, setGoals, assessmentResult, personalizedContent, setPersonalizedContent, addAchievement } = useApp();
   const [newGoal, setNewGoal] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
   const handleAddGoal = () => {
     if (newGoal.trim()) {
+      addAchievement('firstGoal');
       setGoals([
         ...goals,
         { id: Date.now().toString(), text: newGoal.trim(), completed: false },
@@ -52,6 +53,7 @@ export default function WellnessGoals() {
 
     setLoading(true);
     try {
+      addAchievement('contentGenerated');
       const result = await personalizedContentSuggestions({
         assessmentResults: assessmentResult.insights,
         preferences: goals.map(g => g.text).join(', ') || 'General mental wellness, stress reduction, and mindfulness.',
@@ -73,13 +75,13 @@ export default function WellnessGoals() {
   const progress = goals.length > 0 ? (completedGoals / goals.length) * 100 : 0;
 
   return (
-    <Card>
+    <Card className="flex flex-col">
       <CardHeader>
         <CardTitle>Goals & Content</CardTitle>
         <CardDescription>Set wellness goals and get personalized content suggestions from Aya to help you achieve them.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex w-full max-w-sm items-center space-x-2">
+      <CardContent className="space-y-6 flex-1">
+        <div className="flex w-full items-center space-x-2">
           <Input 
             type="text" 
             placeholder="e.g., Meditate for 5 minutes"
@@ -87,7 +89,7 @@ export default function WellnessGoals() {
             onChange={(e) => setNewGoal(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleAddGoal()}
           />
-          <Button onClick={handleAddGoal}><Plus className="mr-2 h-4 w-4" />Add Goal</Button>
+          <Button onClick={handleAddGoal}><Plus className="mr-2 h-4 w-4" />Add</Button>
         </div>
         
         <div className="space-y-4">
@@ -152,7 +154,7 @@ export default function WellnessGoals() {
                         </Button>
                     </div>
                 ) : (
-                     <div className="grid gap-6 md:grid-cols-3">
+                     <div className="grid gap-6 md:grid-cols-1">
                         <Card>
                             <CardContent className="p-4 md:p-6">
                                 <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><BookOpen className="text-primary h-5 w-5"/> Articles</h3>

@@ -15,6 +15,8 @@ import {
   User,
   BookHeart,
   Bot,
+  History,
+  Trophy,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -46,6 +48,8 @@ import { useRouter } from 'next/navigation';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
 import Journal from './journal';
 import AiCoach from './ai-coach';
+import Achievements from './achievements';
+import ConversationHistory from './conversation-history';
 
 
 const SidebarNav = ({ activeTab, navigateTo, isCollapsed, toggleCollapse }: { activeTab: string, navigateTo: (tab: string) => void, isCollapsed: boolean, toggleCollapse: () => void, className?: string }) => (
@@ -63,6 +67,7 @@ const SidebarNav = ({ activeTab, navigateTo, isCollapsed, toggleCollapse }: { ac
         <SidebarNavItem icon={FileText} label="Assessment" tab="assessment" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
         <SidebarNavItem icon={BookHeart} label="Journal" tab="journal" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
         <SidebarNavItem icon={Target} label="Goals & Content" tab="goals" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
+        <SidebarNavItem icon={History} label="History" tab="history" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
         <SidebarNavItem icon={Library} label="Resources" tab="resources" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
     </div>
     </TooltipProvider>
@@ -228,6 +233,10 @@ export default function Dashboard() {
                     <Target className="mr-2 h-4 w-4" />
                     Goals & Content
                     </TabsTrigger>
+                    <TabsTrigger value="history">
+                      <History className="mr-2 h-4 w-4" />
+                      History
+                    </TabsTrigger>
                     <TabsTrigger value="resources">
                     <Library className="mr-2 h-4 w-4" />
                     Resources
@@ -253,8 +262,9 @@ export default function Dashboard() {
                     </Card>
                     <MoodTracker />
                 </div>
-                <div>
-                  <WellnessGoals />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <WellnessGoals />
+                    <Achievements />
                 </div>
               </div>
             </TabsContent>
@@ -269,6 +279,9 @@ export default function Dashboard() {
             </TabsContent>
             <TabsContent value="goals">
               <WellnessGoals />
+            </TabsContent>
+            <TabsContent value="history">
+              <ConversationHistory />
             </TabsContent>
             <TabsContent value="resources">
               <ResourceDirectory />

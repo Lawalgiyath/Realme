@@ -47,7 +47,7 @@ const initialQuestions = [
 
 export default function Assessment() {
   const { toast } = useToast();
-  const { setAssessmentResult, assessmentResult } = useApp();
+  const { setAssessmentResult, assessmentResult, addAchievement, addInteraction } = useApp();
   const [loading, setLoading] = useState(false);
 
   const form = useForm<AssessmentFormValues>({
@@ -70,6 +70,15 @@ export default function Assessment() {
         answers: data.questions.map(q => ({ question: q.question, answer: q.answer })),
       });
       setAssessmentResult(result);
+      addAchievement('assessmentComplete');
+      addInteraction({
+        id: `assessment-${Date.now()}`,
+        type: 'Assessment',
+        title: 'Completed Mental Health Assessment',
+        content: result.insights,
+        timestamp: new Date().toISOString(),
+        data: result,
+      });
       toast({
         title: 'Assessment Complete!',
         description: 'Your personalized insights are ready.',
