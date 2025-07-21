@@ -76,7 +76,7 @@ export default function WellnessGoals() {
     <Card>
       <CardHeader>
         <CardTitle>Goals & Content</CardTitle>
-        <CardDescription>Set wellness goals and get AI-powered content suggestions to help you achieve them.</CardDescription>
+        <CardDescription>Set wellness goals and get personalized content suggestions from Aya to help you achieve them.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="flex w-full max-w-sm items-center space-x-2">
@@ -128,16 +128,16 @@ export default function WellnessGoals() {
             <CardHeader className="p-0 mb-4">
                 <CardTitle className="flex items-center gap-2 text-xl">
                 <Sparkles className="text-primary h-5 w-5" />{' '}
-                Your AI Content Plan
+                Your Content Plan from Aya
                 </CardTitle>
                 <CardDescription>
-                AI suggestions based on your assessment, goals, and mood.
+                Suggestions based on your assessment, goals, and mood.
                 </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
                 {!assessmentResult ? (
                     <div className="text-center text-muted-foreground p-8 bg-secondary rounded-lg">
-                        <p>Complete the AI assessment to unlock your personalized content plan.</p>
+                        <p>Complete the assessment to unlock your personalized content plan.</p>
                     </div>
                 ) : loading ? (
                      <div className="flex justify-center items-center p-8">

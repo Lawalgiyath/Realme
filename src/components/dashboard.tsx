@@ -59,7 +59,7 @@ const SidebarNav = ({ activeTab, navigateTo, isCollapsed, toggleCollapse }: { ac
     <TooltipProvider delayDuration={0}>
     <div className="flex-1 p-2 space-y-1">
         <SidebarNavItem icon={LayoutDashboard} label="Dashboard" tab="dashboard" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
-        <SidebarNavItem icon={Bot} label="AI Coach" tab="coach" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
+        <SidebarNavItem icon={Bot} label="Daily Planner" tab="coach" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
         <SidebarNavItem icon={FileText} label="Assessment" tab="assessment" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
         <SidebarNavItem icon={BookHeart} label="Journal" tab="journal" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
         <SidebarNavItem icon={Target} label="Goals & Content" tab="goals" activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isCollapsed} />
@@ -71,11 +71,11 @@ const SidebarNav = ({ activeTab, navigateTo, isCollapsed, toggleCollapse }: { ac
           <CardHeader className={cn("p-4", isCollapsed && "hidden")}>
             <CardTitle className="text-base flex items-center gap-2 text-sidebar-accent-foreground">
               <Sparkles className="text-sidebar-primary" />
-              AI-Powered Insights
+              Personalized Insights
             </CardTitle>
             <CardDescription className="text-xs text-sidebar-accent-foreground/80">
               Complete your assessment to unlock personalized content and
-              support.
+              support from Aya.
             </CardDescription>
           </CardHeader>
           <CardContent className={cn("p-4 pt-0", isCollapsed && "hidden")}>
@@ -214,7 +214,7 @@ export default function Dashboard() {
                     </TabsTrigger>
                      <TabsTrigger value="coach">
                       <Bot className="mr-2 h-4 w-4" />
-                      AI Coach
+                      Daily Planner
                     </TabsTrigger>
                     <TabsTrigger value="assessment">
                     <FileText className="mr-2 h-4 w-4" />

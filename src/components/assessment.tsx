@@ -89,9 +89,9 @@ export default function Assessment() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>AI Mental Health Assessment</CardTitle>
+        <CardTitle>Personalized Assessment</CardTitle>
         <CardDescription>
-          Answer a few open-ended questions to get personalized insights. Your answers are private and secure. The more detail you provide, the better the AI can understand your needs.
+          Answer a few open-ended questions to get personalized insights from Aya. Your answers are private and secure. The more detail you provide, the better Aya can understand your needs.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -137,7 +137,7 @@ export default function Assessment() {
         {loading && (
           <div className="mt-8 flex flex-col items-center justify-center gap-4 text-center">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="text-muted-foreground">Our AI is analyzing your responses... This may take a moment.</p>
+            <p className="text-muted-foreground">Aya is analyzing your responses... This may take a moment.</p>
           </div>
         )}
 
@@ -148,7 +148,7 @@ export default function Assessment() {
               <AlertTitle className="font-headline">Your Personalized Results</AlertTitle>
               <AlertDescription className="space-y-4 mt-2">
                 <div>
-                  <h3 className="font-semibold text-foreground">Insights</h3>
+                  <h3 className="font-semibold text-foreground">Insights from Aya</h3>
                   <p>{assessmentResult.insights}</p>
                 </div>
                 <div>
