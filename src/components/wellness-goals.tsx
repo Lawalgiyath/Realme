@@ -164,7 +164,7 @@ export default function WellnessGoals() {
                                             <Image data-ai-hint="wellness article" src="https://placehold.co/100x100.png" alt={article} width={60} height={60} className="rounded-lg aspect-square object-cover" />
                                             <div>
                                                 <p className="font-medium text-sm leading-snug">{article}</p>
-                                                <a href="#" className="text-xs text-primary hover:underline">Read more</a>
+                                                <a href={`https://www.google.com/search?q=${encodeURIComponent(article)}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">Read more</a>
                                             </div>
                                         </li>
                                     ))}
@@ -180,7 +180,7 @@ export default function WellnessGoals() {
                                             <Image data-ai-hint="meditation nature" src="https://placehold.co/100x100.png" alt={meditation} width={60} height={60} className="rounded-lg aspect-square object-cover" />
                                             <div>
                                                 <p className="font-medium text-sm leading-snug">{meditation}</p>
-                                                <a href="#" className="text-xs text-primary hover:underline">Start session</a>
+                                                <a href={`https://www.youtube.com/results?search_query=guided+meditation+${encodeURIComponent(meditation)}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">Start session</a>
                                             </div>
                                         </li>
                                     ))}
@@ -196,7 +196,7 @@ export default function WellnessGoals() {
                                             <Image data-ai-hint="mindfulness yoga" src="https://placehold.co/100x100.png" alt={exercise} width={60} height={60} className="rounded-lg aspect-square object-cover" />
                                             <div>
                                                 <p className="font-medium text-sm leading-snug">{exercise}</p>
-                                                <a href="#" className="text-xs text-primary hover:underline">Try it now</a>
+                                                <a href={`https://www.google.com/search?q=${encodeURIComponent(exercise)} exercise`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">Try it now</a>
                                             </div>
                                         </li>
                                     ))}
