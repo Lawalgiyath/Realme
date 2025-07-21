@@ -2,17 +2,20 @@
 
 import { useApp } from "@/context/app-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
-import { Trophy, Award, Star, BookUser, BarChart, Gem, ShieldQuestion } from "lucide-react";
+import { Trophy, Award, Star, BookUser, BarChart, Gem, ShieldQuestion, BrainCircuit, HeartHandshake } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "./ui/tooltip";
 
-const achievementIcons = {
+export const achievementIcons = {
     firstGoal: Star,
     assessmentComplete: BookUser,
     firstJournal: Award,
+    worryJarUse: BrainCircuit,
     contentGenerated: Trophy,
     fiveGoalsDone: Gem,
+    tenGoalsDone: Gem,
     moodWeek: BarChart,
+    moodMonth: BarChart,
     firstResource: ShieldQuestion,
 }
 
@@ -40,7 +43,7 @@ export default function Achievements() {
                                             "flex flex-col items-center justify-center gap-2 p-3 aspect-square rounded-lg border-2 transition-all duration-300",
                                             achievement.unlocked ? "border-primary/50 bg-primary/10 text-primary" : "border-dashed border-muted-foreground/30 text-muted-foreground/50"
                                         )}>
-                                            <Icon className="h-8 w-8 md:h-10 md:w-10" />
+                                            <Icon className={cn("h-8 w-8 md:h-10 md:w-10", achievement.id === 'tenGoalsDone' && 'text-yellow-400', achievement.id === 'moodMonth' && 'text-blue-400')} />
                                             <p className="text-xs font-semibold text-center leading-tight">{achievement.name}</p>
                                         </div>
                                     </TooltipTrigger>

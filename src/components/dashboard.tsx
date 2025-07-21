@@ -51,6 +51,7 @@ import AiCoach from './ai-coach';
 import Achievements from './achievements';
 import ConversationHistory from './conversation-history';
 import BeInspired from './be-inspired';
+import AchievementUnlockedDialog from './achievement-unlocked-dialog';
 
 
 const SidebarNav = ({ activeTab, navigateTo, isCollapsed, toggleCollapse }: { activeTab: string, navigateTo: (tab: string) => void, isCollapsed: boolean, toggleCollapse: () => void, className?: string }) => (
@@ -130,7 +131,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const { user, logout } = useApp();
+  const { user, logout, unlockedAchievement, clearUnlockedAchievement } = useApp();
   const router = useRouter();
 
   const navigateTo = (tab: string) => {
@@ -149,6 +150,12 @@ export default function Dashboard() {
 
   return (
     <div className="flex min-h-screen bg-background">
+      {unlockedAchievement && (
+        <AchievementUnlockedDialog 
+          achievement={unlockedAchievement}
+          onDismiss={clearUnlockedAchievement} 
+        />
+      )}
       {/* Desktop Sidebar */}
       <aside className={cn("hidden md:block flex-shrink-0 border-r border-sidebar-border transition-all duration-300", isSidebarCollapsed ? 'w-20' : 'w-64')}>
           <SidebarNav activeTab={activeTab} navigateTo={navigateTo} isCollapsed={isSidebarCollapsed} toggleCollapse={toggleSidebarCollapse} />

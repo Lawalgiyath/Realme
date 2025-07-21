@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect } from 'react';
 import { Smile, Meh, Frown, Annoyed, Wind } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useApp } from '@/context/app-context';
 import { cn } from '@/lib/utils';
+import { subDays, format } from 'date-fns';
 
 const moods = [
   { name: 'Happy', icon: Smile, color: 'text-green-500' },
@@ -17,7 +19,7 @@ const moods = [
 type MoodName = typeof moods[number]['name'];
 
 export default function MoodTracker() {
-  const { setMoods, moods: moodData } = useApp();
+  const { setMoods, moods: moodData, addAchievement } = useApp();
   
   const today = new Date().toISOString().split('T')[0];
   const moodForToday = moodData.find(m => m.date === today);
@@ -28,6 +30,21 @@ export default function MoodTracker() {
         return [...otherMoods, { mood, date: today }];
     });
   };
+
+  useEffect(() => {
+    const checkMoodStreak = (days: number) => {
+      if (moodData.length < days) return false;
+      const recentDates = Array.from({ length: days }).map((_, i) => format(subDays(new Date(), i), 'yyyy-MM-dd'));
+      return recentDates.every(date => moodData.some(mood => mood.date === date));
+    };
+
+    if (checkMoodStreak(7)) {
+      addAchievement('moodWeek');
+    }
+    if (checkMoodStreak(30)) {
+      addAchievement('moodMonth');
+    }
+  }, [moodData, addAchievement]);
 
   return (
     <Card>

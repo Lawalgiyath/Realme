@@ -22,7 +22,7 @@ export interface User {
   avatar: string;
 }
 
-export type AchievementKey = 'firstGoal' | 'assessmentComplete' | 'firstJournal' | 'contentGenerated' | 'fiveGoalsDone' | 'moodWeek' | 'firstResource';
+export type AchievementKey = 'firstGoal' | 'assessmentComplete' | 'firstJournal' | 'contentGenerated' | 'fiveGoalsDone' | 'moodWeek' | 'firstResource' | 'tenGoalsDone' | 'worryJarUse' | 'moodMonth';
 
 export interface Achievement {
   id: AchievementKey;
@@ -58,6 +58,8 @@ interface AppContextType {
   addAchievement: (key: AchievementKey) => void;
   interactions: Interaction[];
   addInteraction: (interaction: Interaction) => void;
+  unlockedAchievement: Achievement | null;
+  clearUnlockedAchievement: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -70,9 +72,12 @@ const initialAchievements: Achievement[] = [
     { id: 'firstGoal', name: 'Goal Setter', description: 'You set your first wellness goal!', unlocked: false },
     { id: 'assessmentComplete', name: 'Self-Explorer', description: 'You completed your first assessment.', unlocked: false },
     { id: 'firstJournal', name: 'Reflective Mind', description: 'You wrote your first journal entry.', unlocked: false },
+    { id: 'worryJarUse', name: 'Worry Whittler', description: 'You used the Worry Jar for the first time.', unlocked: false },
     { id: 'contentGenerated', name: 'Pathfinder', description: 'You generated your first personalized content plan.', unlocked: false },
     { id: 'fiveGoalsDone', name: 'Goal Getter', description: 'Completed 5 personal goals. Amazing!', unlocked: false },
+    { id: 'tenGoalsDone', name: 'Goal Master', description: 'Completed 10 personal goals. Incredible!', unlocked: false },
     { id: 'moodWeek', name: 'Mood Mapper', description: 'Logged your mood for 7 days in a row.', unlocked: false },
+    { id: 'moodMonth', name: 'Mood Marathoner', description: 'Logged your mood for 30 days. That is commitment!', unlocked: false },
     { id: 'firstResource', name: 'Support Seeker', description: 'Viewed the local resources directory.', unlocked: false },
 ];
 
@@ -91,6 +96,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [achievements, setAchievements] = useState<Achievement[]>(initialAchievements);
   const [interactions, setInteractions] = useState<Interaction[]>([]);
+  const [unlockedAchievement, setUnlockedAchievement] = useState<Achievement | null>(null);
 
   useEffect(() => {
     try {
@@ -134,11 +140,17 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const addAchievement = useCallback((key: AchievementKey) => {
     setAchievements(prev => {
-        const newState = prev.map(a => a.id === key ? { ...a, unlocked: true } : a);
-        if (user) {
-            localStorage.setItem(`realme-achievements-${user.email}`, JSON.stringify(newState));
+        const achievement = prev.find(a => a.id === key);
+        // Only unlock and show popup if it's not already unlocked
+        if (achievement && !achievement.unlocked) {
+            setUnlockedAchievement({ ...achievement, unlocked: true });
+            const newState = prev.map(a => a.id === key ? { ...a, unlocked: true } : a);
+            if (user) {
+                localStorage.setItem(`realme-achievements-${user.email}`, JSON.stringify(newState));
+            }
+            return newState;
         }
-        return newState;
+        return prev; // Return previous state if already unlocked
     });
   }, [user]);
 
@@ -151,6 +163,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         return newState;
     });
   }, [user]);
+
+  const clearUnlockedAchievement = () => {
+    setUnlockedAchievement(null);
+  };
 
 
   const value = useMemo(() => ({
@@ -171,7 +187,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     addAchievement,
     interactions,
     addInteraction,
-  }), [moods, goals, assessmentResult, personalizedContent, user, loading, achievements, addAchievement, interactions, addInteraction]);
+    unlockedAchievement,
+    clearUnlockedAchievement,
+  }), [moods, goals, assessmentResult, personalizedContent, user, loading, achievements, addAchievement, interactions, addInteraction, unlockedAchievement]);
 
   return (
     <AppContext.Provider value={value as AppContextType}>

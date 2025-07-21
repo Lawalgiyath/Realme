@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Check, Plus, Trash2, Sparkles, Loader2, BookOpen, Wind, BrainCircuit } from 'lucide-react';
 import { useApp } from '@/context/app-context';
 import { Button } from '@/components/ui/button';
@@ -36,6 +36,16 @@ export default function WellnessGoals() {
       )
     );
   };
+
+  useEffect(() => {
+    const completedGoalsCount = goals.filter(g => g.completed).length;
+    if (completedGoalsCount >= 5) {
+        addAchievement('fiveGoalsDone');
+    }
+    if (completedGoalsCount >= 10) {
+        addAchievement('tenGoalsDone');
+    }
+  }, [goals, addAchievement]);
 
   const removeGoal = (id: string) => {
     setGoals(goals.filter((goal) => goal.id !== id));

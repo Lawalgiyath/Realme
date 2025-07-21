@@ -70,12 +70,6 @@ export default function Journal() {
   }, [toast]);
   
   const handleToggleListening = async () => {
-    if (isListening) {
-      recognitionRef.current?.stop();
-      setIsListening(false);
-      return;
-    }
-
     if (!recognitionRef.current) {
         toast({
             variant: 'destructive',
@@ -83,6 +77,12 @@ export default function Journal() {
             description: 'Your browser does not support voice recognition.',
         });
         return;
+    }
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
     }
 
     try {
