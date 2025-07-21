@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { BookHeart, Loader2, Sparkles, Wand2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { BookHeart, Loader2, Sparkles, Wand2, Mic, MicOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { analyzeJournalEntry } from '@/ai/flows/journal-analysis-flow';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { reframeWorry } from '@/ai/flows/worry-jar-flow';
+import { cn } from '@/lib/utils';
 
 const prompts = [
     "What's on your mind today?",
@@ -26,10 +27,75 @@ export default function Journal() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const [placeholder, setPlaceholder] = useState('');
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     setPlaceholder(prompts[Math.floor(Math.random() * prompts.length)]);
-  }, []);
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.interimResults = true;
+
+      recognitionRef.current.onresult = (event: any) => {
+        let finalTranscript = '';
+        for (let i = 0; i < event.results.length; i++) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript + ' ';
+          }
+        }
+        setEntry((prev) => prev + finalTranscript);
+      };
+
+      recognitionRef.current.onerror = (event: any) => {
+        console.error('Speech recognition error', event.error);
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+            toast({
+                variant: 'destructive',
+                title: 'Microphone Access Denied',
+                description: 'Please enable microphone permissions in your browser settings to use voice input.',
+            });
+        }
+        setIsListening(false);
+      };
+      
+      recognitionRef.current.onend = () => {
+          setIsListening(false);
+      }
+    }
+  }, [toast]);
+  
+  const handleToggleListening = async () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    if (!recognitionRef.current) {
+        toast({
+            variant: 'destructive',
+            title: 'Browser Not Supported',
+            description: 'Your browser does not support voice recognition.',
+        });
+        return;
+    }
+
+    try {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        recognitionRef.current?.start();
+        setIsListening(true);
+    } catch (err) {
+        console.error('Error getting user media', err);
+        toast({
+            variant: 'destructive',
+            title: 'Microphone Access Required',
+            description: 'Could not access the microphone. Please check your browser permissions.',
+        });
+    }
+  };
 
   const handleAnalyzeEntry = async () => {
     if (entry.trim().length > 10 && entry.trim().length < 100) {
@@ -101,14 +167,26 @@ export default function Journal() {
       </CardHeader>
       <CardContent className="space-y-6">
         <div>
-            <Textarea
-                placeholder={placeholder}
-                value={entry}
-                onChange={(e) => setEntry(e.target.value)}
-                rows={10}
-                disabled={loading}
-                className="text-base"
-            />
+            <div className="relative">
+                <Textarea
+                    placeholder={placeholder}
+                    value={entry}
+                    onChange={(e) => setEntry(e.target.value)}
+                    rows={10}
+                    disabled={loading}
+                    className="text-base pr-12"
+                />
+                 <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleToggleListening}
+                    className={cn('absolute top-3 right-3 text-muted-foreground', isListening && 'text-destructive')}
+                    >
+                    {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                    <span className="sr-only">{isListening ? 'Stop listening' : 'Start listening'}</span>
+                </Button>
+            </div>
         </div>
         <div className="flex justify-end">
           <Button onClick={handleAnalyzeEntry} disabled={loading || !entry.trim()}>

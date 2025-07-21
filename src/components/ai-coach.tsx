@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Bot, Utensils, Calendar, Loader2, Sparkles, Wand2 } from 'lucide-react';
+import { Bot, Utensils, Calendar, Loader2, Sparkles, Wand2, Mic, MicOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { planDay, DailyPlannerOutput } from '@/ai/flows/daily-planner-flow';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { cn } from '@/lib/utils';
 
 const plannerSchema = z.object({
   activities: z.string().min(10, 'Please describe your day in a bit more detail.'),
@@ -26,6 +27,8 @@ export default function AiCoach() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DailyPlannerOutput | null>(null);
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
 
   const form = useForm<PlannerFormValues>({
     resolver: zodResolver(plannerSchema),
@@ -35,6 +38,78 @@ export default function AiCoach() {
       dietaryRestrictions: '',
     },
   });
+
+  useEffect(() => {
+    // Check for browser support
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.interimResults = true;
+
+      recognitionRef.current.onresult = (event: any) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+        for (let i = 0; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript + ' ';
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+        form.setValue('activities', form.getValues('activities') + finalTranscript);
+      };
+
+      recognitionRef.current.onerror = (event: any) => {
+        console.error('Speech recognition error', event.error);
+         if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+            toast({
+                variant: 'destructive',
+                title: 'Microphone Access Denied',
+                description: 'Please enable microphone permissions in your browser settings to use voice input.',
+            });
+        }
+        setIsListening(false);
+      };
+      
+      recognitionRef.current.onend = () => {
+          setIsListening(false);
+      }
+
+    }
+  }, [form, toast]);
+
+  const handleToggleListening = async () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    if (!recognitionRef.current) {
+        toast({
+            variant: 'destructive',
+            title: 'Browser Not Supported',
+            description: 'Your browser does not support voice recognition.',
+        });
+        return;
+    }
+
+    try {
+        // This will prompt for permission
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        recognitionRef.current?.start();
+        setIsListening(true);
+    } catch (err) {
+        console.error('Error getting user media', err);
+        toast({
+            variant: 'destructive',
+            title: 'Microphone Access Required',
+            description: 'Could not access the microphone. Please check your browser permissions.',
+        });
+    }
+  };
 
   async function onSubmit(data: PlannerFormValues) {
     setLoading(true);
@@ -77,7 +152,19 @@ export default function AiCoach() {
               name="activities"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-base">What's on your schedule today?</FormLabel>
+                  <FormLabel className="text-base flex items-center justify-between">
+                    What's on your schedule today?
+                     <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleToggleListening}
+                        className={cn(isListening && 'text-destructive')}
+                        >
+                        {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                        <span className="sr-only">{isListening ? 'Stop listening' : 'Start listening'}</span>
+                    </Button>
+                  </FormLabel>
                   <FormControl>
                     <Textarea
                     placeholder="e.g., Morning meeting at 10am, finish project report, gym session in the evening..."
