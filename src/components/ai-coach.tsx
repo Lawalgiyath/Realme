@@ -24,13 +24,15 @@ const plannerSchema = z.object({
 
 type PlannerFormValues = z.infer<typeof plannerSchema>;
 
+type ActiveField = 'activities' | 'mealTarget' | 'dietaryRestrictions';
+
 export default function AiCoach() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DailyPlannerOutput | null>(null);
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
-  const activeFieldRef = useRef<'activities' | 'mealTarget' | 'dietaryRestrictions'>('activities');
+  const activeFieldRef = useRef<ActiveField>('activities');
   const { addInteraction } = useApp();
 
   const form = useForm<PlannerFormValues>({
@@ -49,36 +51,41 @@ export default function AiCoach() {
       recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
 
-      recognitionRef.current.onresult = (event: any) => {
+      recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
         let finalTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
           if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript + ' ';
+            finalTranscript += event.results[i][0].transcript.trim() + ' ';
           }
         }
         
-        const lowerCaseTranscript = finalTranscript.toLowerCase();
+        const lowerCaseTranscript = finalTranscript.toLowerCase().trim();
+        const currentField = activeFieldRef.current;
+        const currentFieldValue = form.getValues(currentField) || '';
+
+        const stopListeningAndSwitch = (field: ActiveField) => {
+             recognitionRef.current?.stop();
+             form.setFocus(field);
+        };
 
         if (lowerCaseTranscript.includes('dietary restrictions')) {
-            const cleanTranscript = finalTranscript.replace(/dietary restrictions/i, '').trim();
-             if (cleanTranscript) {
-              form.setValue(activeFieldRef.current, (form.getValues(activeFieldRef.current) || '') + cleanTranscript + ' ');
-            }
-            form.setFocus('dietaryRestrictions');
-            activeFieldRef.current = 'dietaryRestrictions';
-        } else if (lowerCaseTranscript.includes('meal plan')) {
-            const cleanTranscript = finalTranscript.replace(/meal plan/i, '').trim();
+            const cleanTranscript = finalTranscript.replace(/dietary restrictions/gi, '').trim();
             if (cleanTranscript) {
-              form.setValue(activeFieldRef.current, (form.getValues(activeFieldRef.current) || '') + cleanTranscript + ' ');
+              form.setValue(currentField, currentFieldValue + cleanTranscript + ' ');
             }
-            form.setFocus('mealTarget');
-            activeFieldRef.current = 'mealTarget';
+            stopListeningAndSwitch('dietaryRestrictions');
+        } else if (lowerCaseTranscript.includes('meal plan')) {
+            const cleanTranscript = finalTranscript.replace(/meal plan/gi, '').trim();
+            if (cleanTranscript) {
+                form.setValue(currentField, currentFieldValue + cleanTranscript + ' ');
+            }
+            stopListeningAndSwitch('mealTarget');
         } else {
-             form.setValue(activeFieldRef.current, (form.getValues(activeFieldRef.current) || '') + finalTranscript);
+             form.setValue(currentField, currentFieldValue + finalTranscript);
         }
       };
 
-      recognitionRef.current.onerror = (event: any) => {
+      recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
         console.error('Speech recognition error', event.error);
          if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
             toast({
@@ -97,7 +104,8 @@ export default function AiCoach() {
     }
   }, [form, toast]);
 
-  const handleToggleListening = async (field: 'activities' | 'mealTarget' | 'dietaryRestrictions') => {
+  const handleToggleListening = async (field: ActiveField) => {
+    // If listening, stop it regardless of which button was pressed.
     if (isListening) {
       recognitionRef.current?.stop();
       setIsListening(false);
@@ -114,8 +122,11 @@ export default function AiCoach() {
     }
 
     try {
+        // Always request permission before starting
         await navigator.mediaDevices.getUserMedia({ audio: true });
+        
         activeFieldRef.current = field;
+        form.setFocus(field); // Focus the field we're about to listen for
         recognitionRef.current?.start();
         setIsListening(true);
     } catch (err) {
@@ -195,7 +206,6 @@ export default function AiCoach() {
                     <Textarea
                     placeholder="e.g., Morning meeting at 10am, finish project report, gym session in the evening..."
                     rows={5}
-                    onFocus={() => activeFieldRef.current = 'activities'}
                     {...field}
                     />
                   </FormControl>
@@ -227,7 +237,6 @@ export default function AiCoach() {
                         <FormControl>
                             <Input 
                                 placeholder="e.g., High protein, low carb, balanced" 
-                                onFocus={() => activeFieldRef.current = 'mealTarget'}
                                 {...field} 
                             />
                         </FormControl>
@@ -255,7 +264,6 @@ export default function AiCoach() {
                         <FormControl>
                             <Input 
                                 placeholder="e.g., Vegetarian, nut allergy" 
-                                onFocus={() => activeFieldRef.current = 'dietaryRestrictions'}
                                 {...field} 
                             />
                         </FormControl>
