@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useForm } from "react-hook-form"
@@ -5,6 +6,8 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useState } from "react"
+import { FirebaseError } from "firebase/app"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -19,7 +22,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 import { useApp } from "@/context/app-context"
-import { HeartPulse } from "lucide-react"
+import { HeartPulse, Loader2 } from "lucide-react"
 
 const formSchema = z.object({
   email: z.string().email({
@@ -34,6 +37,7 @@ export function LoginForm() {
   const router = useRouter();
   const { login } = useApp();
   const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -43,22 +47,41 @@ export function LoginForm() {
     },
   })
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    // This is a dummy login. In a real app, you'd call your auth API.
-    toast({
-      title: "Login Successful!",
-      description: "Welcome back! Redirecting you to the dashboard...",
-    })
-    
-    // Create a dummy user object
-    const dummyUser = {
-      name: "Dummy User",
-      email: values.email,
-      phone: "08012345678", // Dummy phone
-    };
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setLoading(true);
+    try {
+        await login(values.email, values.password);
+        toast({
+            title: "Login Successful!",
+            description: "Welcome back! Redirecting you to the dashboard...",
+        });
+        router.push("/dashboard");
 
-    login(dummyUser);
-    router.push("/dashboard");
+    } catch(error) {
+        console.error("Login failed", error);
+        let description = "An unexpected error occurred. Please try again.";
+        if (error instanceof FirebaseError) {
+             switch(error.code) {
+                case 'auth/user-not-found':
+                case 'auth/wrong-password':
+                case 'auth/invalid-credential':
+                    description = "Invalid email or password. Please try again.";
+                    break;
+                case 'auth/invalid-email':
+                    description = "The email address is not valid.";
+                    break;
+                default:
+                    description = "Could not sign you in. Please try again."
+            }
+        }
+        toast({
+            variant: "destructive",
+            title: "Login Failed",
+            description,
+        });
+    } finally {
+        setLoading(false);
+    }
   }
 
   return (
@@ -83,7 +106,7 @@ export function LoginForm() {
                         <FormItem>
                         <FormLabel>Email</FormLabel>
                         <FormControl>
-                            <Input placeholder="name@example.com" {...field} />
+                            <Input placeholder="name@example.com" {...field} disabled={loading} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -96,13 +119,16 @@ export function LoginForm() {
                         <FormItem>
                         <FormLabel>Password</FormLabel>
                         <FormControl>
-                            <Input type="password" placeholder="••••••••" {...field} />
+                            <Input type="password" placeholder="••••••••" {...field} disabled={loading} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
                     )}
                     />
-                    <Button type="submit" className="w-full">Log In</Button>
+                    <Button type="submit" className="w-full" disabled={loading}>
+                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {loading ? 'Logging In...' : 'Log In'}
+                    </Button>
                 </form>
             </Form>
             <div className="mt-4 text-center text-sm">

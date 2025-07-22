@@ -1,3 +1,4 @@
+
 'use client';
 import { useApp } from '@/context/app-context';
 import { useRouter } from 'next/navigation';
@@ -12,12 +13,12 @@ export default function Profile() {
 
   if (!user) {
     // This should be handled by the layout, but as a fallback:
-    router.replace('/login');
+    // router.replace('/login');
     return null;
   }
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     router.replace('/');
   };
 
@@ -31,9 +32,9 @@ export default function Profile() {
             <Card>
                 <CardHeader className="flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
                     <Avatar className="h-24 w-24 border-4 border-primary/20">
-                    <AvatarImage src={user.avatar} alt={user.name} />
+                    <AvatarImage src={user.avatar ?? undefined} alt={user.name ?? ''} />
                     <AvatarFallback className="text-3xl">
-                        {user.name[0].toUpperCase()}
+                        {user.name?.[0].toUpperCase()}
                     </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
@@ -49,9 +50,8 @@ export default function Profile() {
                             Account Information
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <InfoItem icon={UserIcon} label="Full Name" value={user.name} />
-                            <InfoItem icon={Mail} label="Email Address" value={user.email} />
-                            <InfoItem icon={Phone} label="Phone Number" value={user.phone} />
+                            <InfoItem icon={UserIcon} label="Full Name" value={user.name ?? 'Not set'} />
+                            <InfoItem icon={Mail} label="Email Address" value={user.email ?? 'Not set'} />
                         </div>
                         
                         <h3 className="text-lg font-semibold text-foreground border-b pb-2 pt-6">

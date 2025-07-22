@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useForm } from "react-hook-form"
@@ -5,6 +6,8 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useState } from "react"
+import { FirebaseError } from "firebase/app"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -19,7 +22,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 import { useApp } from "@/context/app-context"
-import { HeartPulse } from "lucide-react"
+import { HeartPulse, Loader2 } from "lucide-react"
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -40,8 +43,9 @@ const formSchema = z.object({
 
 export function SignupForm() {
   const router = useRouter();
-  const { login } = useApp();
+  const { signup } = useApp();
   const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -53,19 +57,42 @@ export function SignupForm() {
     },
   })
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    toast({
-      title: "Account Created!",
-      description: "You have successfully signed up.",
-    });
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setLoading(true);
+    try {
+        await signup(values.name, values.email, values.phone, values.password);
+        toast({
+            title: "Account Created!",
+            description: "You have successfully signed up. Taking you to the onboarding...",
+        });
+        router.push("/onboarding");
 
-    login({
-        name: values.name,
-        email: values.email,
-        phone: values.phone
-    });
-    
-    router.push("/onboarding");
+    } catch (error) {
+        console.error("Signup failed", error);
+        let description = "An unexpected error occurred. Please try again.";
+        if (error instanceof FirebaseError) {
+            switch(error.code) {
+                case 'auth/email-already-in-use':
+                    description = "This email address is already in use by another account.";
+                    break;
+                case 'auth/invalid-email':
+                    description = "The email address is not valid.";
+                    break;
+                case 'auth/weak-password':
+                    description = "The password is too weak. Please use a stronger password.";
+                    break;
+                default:
+                    description = "Could not create your account. Please try again."
+            }
+        }
+        toast({
+            variant: "destructive",
+            title: "Signup Failed",
+            description,
+        });
+    } finally {
+        setLoading(false);
+    }
   }
 
   return (
@@ -90,7 +117,7 @@ export function SignupForm() {
                             <FormItem>
                             <FormLabel>Full Name</FormLabel>
                             <FormControl>
-                                <Input placeholder="John Doe" {...field} />
+                                <Input placeholder="John Doe" {...field} disabled={loading} />
                             </FormControl>
                             <FormMessage />
                             </FormItem>
@@ -103,7 +130,7 @@ export function SignupForm() {
                             <FormItem>
                             <FormLabel>Email</FormLabel>
                             <FormControl>
-                                <Input placeholder="name@example.com" {...field} />
+                                <Input placeholder="name@example.com" {...field} disabled={loading} />
                             </FormControl>
                             <FormMessage />
                             </FormItem>
@@ -116,7 +143,7 @@ export function SignupForm() {
                             <FormItem>
                             <FormLabel>Phone Number</FormLabel>
                             <FormControl>
-                                <Input type="tel" placeholder="08012345678" {...field} />
+                                <Input type="tel" placeholder="08012345678" {...field} disabled={loading} />
                             </FormControl>
                             <FormMessage />
                             </FormItem>
@@ -129,13 +156,16 @@ export function SignupForm() {
                             <FormItem>
                             <FormLabel>Password</FormLabel>
                             <FormControl>
-                                <Input type="password" placeholder="••••••••" {...field} />
+                                <Input type="password" placeholder="••••••••" {...field} disabled={loading} />
                             </FormControl>
                             <FormMessage />
                             </FormItem>
                         )}
                     />
-                    <Button type="submit" className="w-full">Create Account</Button>
+                    <Button type="submit" className="w-full" disabled={loading}>
+                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {loading ? 'Creating Account...' : 'Create Account'}
+                    </Button>
                 </form>
             </Form>
             <div className="mt-4 text-center text-sm">

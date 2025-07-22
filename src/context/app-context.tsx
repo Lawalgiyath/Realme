@@ -1,8 +1,11 @@
+
 "use client";
 
 import type { PersonalizedContentOutput } from '@/ai/flows/personalized-content';
 import type { MentalHealthAssessmentOutput } from '@/ai/flows/mental-health-assessment';
 import React, { createContext, useState, useContext, ReactNode, useMemo, useEffect, useCallback } from 'react';
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, type User as FirebaseUser } from 'firebase/auth';
 
 export interface Mood {
   mood: 'Happy' | 'Calm' | 'Okay' | 'Anxious' | 'Sad';
@@ -16,10 +19,10 @@ export interface Goal {
 }
 
 export interface User {
-  name: string;
-  email: string;
-  phone: string;
-  avatar: string;
+  uid: string;
+  name: string | null;
+  email: string | null;
+  avatar: string | null;
 }
 
 export type AchievementKey = 'firstGoal' | 'assessmentComplete' | 'firstJournal' | 'contentGenerated' | 'fiveGoalsDone' | 'moodWeek' | 'firstResource' | 'tenGoalsDone' | 'worryJarUse' | 'moodMonth';
@@ -50,9 +53,9 @@ interface AppContextType {
   personalizedContent: PersonalizedContentOutput | null;
   setPersonalizedContent: React.Dispatch<React.SetStateAction<PersonalizedContentOutput | null>>;
   user: User | null;
-  setUser: React.Dispatch<React.SetStateAction<User | null>>;
-  login: (user: Omit<User, 'avatar'>) => void;
-  logout: () => void;
+  signup: (name: string, email: string, phone: string, password: string) => Promise<FirebaseUser>;
+  login: (email: string, password: string) => Promise<FirebaseUser>;
+  logout: () => Promise<void>;
   loading: boolean;
   achievements: Achievement[];
   addAchievement: (key: AchievementKey) => void;
@@ -99,43 +102,74 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [unlockedAchievement, setUnlockedAchievement] = useState<Achievement | null>(null);
 
   useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem('realme-user');
-      if (storedUser) {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-        // Load other user-specific data
-        const storedAchievements = localStorage.getItem(`realme-achievements-${parsedUser.email}`);
-        if(storedAchievements) setAchievements(JSON.parse(storedAchievements));
-        
-        const storedInteractions = localStorage.getItem(`realme-interactions-${parsedUser.email}`);
-        if(storedInteractions) setInteractions(JSON.parse(storedInteractions));
-
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        const currentUser: User = {
+            uid: firebaseUser.uid,
+            name: firebaseUser.displayName,
+            email: firebaseUser.email,
+            avatar: firebaseUser.photoURL,
+        };
+        setUser(currentUser);
+        // Load user-specific data from local storage
+        try {
+             const storedAchievements = localStorage.getItem(`realme-achievements-${currentUser.email}`);
+            if(storedAchievements) setAchievements(JSON.parse(storedAchievements));
+            
+            const storedInteractions = localStorage.getItem(`realme-interactions-${currentUser.email}`);
+            if(storedInteractions) setInteractions(JSON.parse(storedInteractions));
+        } catch (e) {
+            console.error("Failed to load user data from localStorage", e)
+        }
+      } else {
+        setUser(null);
       }
-    } catch (error) {
-      console.error("Failed to parse data from localStorage", error);
-    } finally {
-        setLoading(false);
-    }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const login = (userData: Omit<User, 'avatar'>) => {
-    const newUser: User = { ...userData, avatar: getRandomAvatar() };
-    localStorage.setItem('realme-user', JSON.stringify(newUser));
+  const signup = async (name: string, email: string, phone: string, password: string): Promise<FirebaseUser> => {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const avatarUrl = getRandomAvatar();
+    await updateProfile(userCredential.user, {
+      displayName: name,
+      photoURL: avatarUrl,
+    });
+    
+    // We can store phone in Firestore if needed, as it's not part of the default FirebaseUser profile
+    
+    const newUser: User = {
+        uid: userCredential.user.uid,
+        name,
+        email,
+        avatar: avatarUrl
+    };
     setUser(newUser);
     // Reset data for new user
     setAchievements(initialAchievements);
     setInteractions([]);
+    localStorage.removeItem(`realme-achievements-${email}`);
+    localStorage.removeItem(`realme-interactions-${email}`);
+
+    return userCredential.user;
   };
 
-  const logout = () => {
-    localStorage.removeItem('realme-user');
-    // We don't remove achievements or interactions so they can persist if the user logs back in
-    setUser(null);
+  const login = async (email: string, password: string): Promise<FirebaseUser> => {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      return userCredential.user;
+  };
+
+  const logout = async () => {
+    await signOut(auth);
+    // Clear all app state on logout
     setAssessmentResult(null);
     setPersonalizedContent(null);
     setGoals([]);
     setMoods([]);
+    setAchievements(initialAchievements);
+    setInteractions([]);
   };
 
   const addAchievement = useCallback((key: AchievementKey) => {
@@ -179,7 +213,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     personalizedContent,
     setPersonalizedContent,
     user,
-    setUser,
+    signup,
     login,
     logout,
     loading,
