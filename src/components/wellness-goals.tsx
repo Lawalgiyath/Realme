@@ -105,8 +105,10 @@ export default function WellnessGoals() {
         <div className="space-y-4">
           {goals.length > 0 && (
             <div>
-              <div className="flex justify-between mb-1">
-                <span className="text-base font-medium text-primary">Progress</span>
+              <div className="flex justify-between mb-2">
+                <span className="text-sm font-medium text-muted-foreground">
+                  {completedGoals} of {goals.length} goals completed
+                </span>
                 <span className="text-sm font-medium text-primary">{Math.round(progress)}%</span>
               </div>
               <Progress value={progress} />
