@@ -5,7 +5,7 @@ import type { PersonalizedContentOutput } from '@/ai/flows/personalized-content'
 import type { MentalHealthAssessmentOutput } from '@/ai/flows/mental-health-assessment';
 import React, { createContext, useState, useContext, ReactNode, useMemo, useEffect, useCallback } from 'react';
 import { auth } from '@/lib/firebase';
-import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, type User as FirebaseUser } from 'firebase/auth';
+import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, type User as FirebaseUser, GoogleAuthProvider, signInWithPopup, signInAnonymously } from 'firebase/auth';
 
 export interface Mood {
   mood: 'Happy' | 'Calm' | 'Okay' | 'Anxious' | 'Sad';
@@ -23,6 +23,7 @@ export interface User {
   name: string | null;
   email: string | null;
   avatar: string | null;
+  isAnonymous: boolean;
 }
 
 export type AchievementKey = 'firstGoal' | 'assessmentComplete' | 'firstJournal' | 'contentGenerated' | 'fiveGoalsDone' | 'moodWeek' | 'firstResource' | 'tenGoalsDone' | 'worryJarUse' | 'moodMonth';
@@ -53,8 +54,10 @@ interface AppContextType {
   personalizedContent: PersonalizedContentOutput | null;
   setPersonalizedContent: React.Dispatch<React.SetStateAction<PersonalizedContentOutput | null>>;
   user: User | null;
-  signup: (name: string, email: string, phone: string, password: string) => Promise<FirebaseUser>;
+  signup: (name: string, email: string, password: string) => Promise<FirebaseUser>;
   login: (email: string, password: string) => Promise<FirebaseUser>;
+  loginWithGoogle: () => Promise<FirebaseUser>;
+  loginAnonymously: () => Promise<FirebaseUser>;
   logout: () => Promise<void>;
   loading: boolean;
   achievements: Achievement[];
@@ -106,18 +109,32 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       if (firebaseUser) {
         const currentUser: User = {
             uid: firebaseUser.uid,
-            name: firebaseUser.displayName,
+            name: firebaseUser.displayName || "Guest",
             email: firebaseUser.email,
-            avatar: firebaseUser.photoURL,
+            avatar: firebaseUser.photoURL || getRandomAvatar(),
+            isAnonymous: firebaseUser.isAnonymous
         };
         setUser(currentUser);
         // Load user-specific data from local storage
         try {
-             const storedAchievements = localStorage.getItem(`realme-achievements-${currentUser.email}`);
-            if(storedAchievements) setAchievements(JSON.parse(storedAchievements));
-            
-            const storedInteractions = localStorage.getItem(`realme-interactions-${currentUser.email}`);
-            if(storedInteractions) setInteractions(JSON.parse(storedInteractions));
+            const storedKey = `realme-data-${currentUser.uid}`;
+            const storedData = localStorage.getItem(storedKey);
+            if(storedData) {
+                const data = JSON.parse(storedData);
+                setAchievements(data.achievements || initialAchievements);
+                setInteractions(data.interactions || []);
+                setGoals(data.goals || []);
+                setMoods(data.moods || []);
+                setAssessmentResult(data.assessmentResult || null);
+                setPersonalizedContent(data.personalizedContent || null);
+            } else {
+                 setAchievements(initialAchievements);
+                 setInteractions([]);
+                 setGoals([]);
+                 setMoods([]);
+                 setAssessmentResult(null);
+                 setPersonalizedContent(null);
+            }
         } catch (e) {
             console.error("Failed to load user data from localStorage", e)
         }
@@ -130,7 +147,24 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     return () => unsubscribe();
   }, []);
 
-  const signup = async (name: string, email: string, phone: string, password: string): Promise<FirebaseUser> => {
+  // Effect to save data to local storage whenever it changes
+  useEffect(() => {
+    if (user && !loading) {
+        const storedKey = `realme-data-${user.uid}`;
+        const dataToStore = JSON.stringify({
+            achievements,
+            interactions,
+            goals,
+            moods,
+            assessmentResult,
+            personalizedContent
+        });
+        localStorage.setItem(storedKey, dataToStore);
+    }
+  }, [user, loading, achievements, interactions, goals, moods, assessmentResult, personalizedContent]);
+
+
+  const signup = async (name: string, email: string, password: string): Promise<FirebaseUser> => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const avatarUrl = getRandomAvatar();
     await updateProfile(userCredential.user, {
@@ -138,20 +172,19 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       photoURL: avatarUrl,
     });
     
-    // We can store phone in Firestore if needed, as it's not part of the default FirebaseUser profile
-    
     const newUser: User = {
         uid: userCredential.user.uid,
         name,
         email,
-        avatar: avatarUrl
+        avatar: avatarUrl,
+        isAnonymous: false,
     };
     setUser(newUser);
     // Reset data for new user
+    const storedKey = `realme-data-${userCredential.user.uid}`;
+    localStorage.removeItem(storedKey);
     setAchievements(initialAchievements);
     setInteractions([]);
-    localStorage.removeItem(`realme-achievements-${email}`);
-    localStorage.removeItem(`realme-interactions-${email}`);
 
     return userCredential.user;
   };
@@ -161,7 +194,19 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       return userCredential.user;
   };
 
+  const loginWithGoogle = async (): Promise<FirebaseUser> => {
+      const provider = new GoogleAuthProvider();
+      const userCredential = await signInWithPopup(auth, provider);
+      return userCredential.user;
+  }
+  
+  const loginAnonymously = async(): Promise<FirebaseUser> => {
+      const userCredential = await signInAnonymously(auth);
+      return userCredential.user;
+  }
+
   const logout = async () => {
+    const userEmail = user?.email;
     await signOut(auth);
     // Clear all app state on logout
     setAssessmentResult(null);
@@ -170,32 +215,29 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setMoods([]);
     setAchievements(initialAchievements);
     setInteractions([]);
+    if (userEmail) { // Also clear localstorage for the logged-out user
+        // This is a bit of a guess if they are not anonymous
+         localStorage.removeItem(`realme-achievements-${userEmail}`);
+         localStorage.removeItem(`realme-interactions-${userEmail}`);
+    }
   };
 
   const addAchievement = useCallback((key: AchievementKey) => {
+    if (user?.isAnonymous) return; // Don't grant achievements to guests
     setAchievements(prev => {
         const achievement = prev.find(a => a.id === key);
         // Only unlock and show popup if it's not already unlocked
         if (achievement && !achievement.unlocked) {
             setUnlockedAchievement({ ...achievement, unlocked: true });
-            const newState = prev.map(a => a.id === key ? { ...a, unlocked: true } : a);
-            if (user) {
-                localStorage.setItem(`realme-achievements-${user.email}`, JSON.stringify(newState));
-            }
-            return newState;
+            return prev.map(a => a.id === key ? { ...a, unlocked: true } : a);
         }
         return prev; // Return previous state if already unlocked
     });
   }, [user]);
 
   const addInteraction = useCallback((interaction: Interaction) => {
-    setInteractions(prev => {
-        const newState = [interaction, ...prev];
-        if (user) {
-            localStorage.setItem(`realme-interactions-${user.email}`, JSON.stringify(newState));
-        }
-        return newState;
-    });
+    if (user?.isAnonymous) return;
+    setInteractions(prev => [interaction, ...prev]);
   }, [user]);
 
   const clearUnlockedAchievement = () => {
@@ -215,6 +257,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     user,
     signup,
     login,
+    loginWithGoogle,
+    loginAnonymously,
     logout,
     loading,
     achievements,

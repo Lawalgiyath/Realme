@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, LogOut, Mail, Phone, User as UserIcon } from 'lucide-react';
+import { ArrowLeft, LogOut, Mail, User as UserIcon, ShieldQuestion } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 
 export default function Profile() {
   const { user, logout } = useApp();
@@ -13,7 +14,6 @@ export default function Profile() {
 
   if (!user) {
     // This should be handled by the layout, but as a fallback:
-    // router.replace('/login');
     return null;
   }
 
@@ -40,11 +40,23 @@ export default function Profile() {
                     <div className="flex-1">
                     <CardTitle className="text-3xl">{user.name}</CardTitle>
                     <CardDescription>
-                        Your personal profile and account settings.
+                       {user.isAnonymous ? "You are currently browsing as a guest." : "Your personal profile and account settings."}
                     </CardDescription>
                     </div>
                 </CardHeader>
                 <CardContent className="mt-6">
+                    { user.isAnonymous ? (
+                        <div className="text-center p-6 bg-secondary rounded-lg">
+                            <ShieldQuestion className="h-12 w-12 text-primary mx-auto mb-4" />
+                            <h3 className="text-xl font-semibold">Save Your Progress</h3>
+                            <p className="text-muted-foreground mt-2 mb-4">
+                                Sign up for a free account to save your goals, moods, and achievements.
+                            </p>
+                            <Button onClick={() => router.push('/signup')}>
+                                Sign Up Now
+                            </Button>
+                        </div>
+                    ) : (
                     <div className="space-y-6">
                         <h3 className="text-lg font-semibold text-foreground border-b pb-2">
                             Account Information
@@ -58,13 +70,30 @@ export default function Profile() {
                             Account Actions
                         </h3>
                         <div className="flex flex-col sm:flex-row gap-4">
-                            <Button variant="outline">Change Password</Button>
-                            <Button variant="destructive" onClick={handleLogout}>
-                                <LogOut className="mr-2 h-4 w-4" />
-                                Log Out
-                            </Button>
+                            <Button variant="outline" disabled>Change Password</Button>
+                             <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="destructive">
+                                        <LogOut className="mr-2 h-4 w-4" />
+                                        Log Out
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you sure you want to log out?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            You will be returned to the landing page.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleLogout}>Log Out</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                         </div>
                     </div>
+                    )}
                 </CardContent>
             </Card>
       </div>
