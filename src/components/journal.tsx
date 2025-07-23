@@ -89,13 +89,21 @@ export default function Journal() {
         await navigator.mediaDevices.getUserMedia({ audio: true });
         recognitionRef.current?.start();
         setIsListening(true);
-    } catch (err) {
+    } catch (err: any) {
         console.error('Error getting user media', err);
-        toast({
-            variant: 'destructive',
-            title: 'Microphone Access Required',
-            description: 'Could not access the microphone. Please check your browser permissions.',
-        });
+        if (err.name === 'NotFoundError') {
+             toast({
+                variant: 'destructive',
+                title: 'Microphone Not Found',
+                description: 'No microphone was found on your device. Please connect a microphone and try again.',
+            });
+        } else {
+            toast({
+                variant: 'destructive',
+                title: 'Microphone Access Required',
+                description: 'Could not access the microphone. Please check your browser permissions.',
+            });
+        }
     }
   };
 

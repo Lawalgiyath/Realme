@@ -105,7 +105,6 @@ export default function AiCoach() {
   }, [form, toast]);
 
   const handleToggleListening = async (field: ActiveField) => {
-    // If listening, stop it regardless of which button was pressed.
     if (isListening) {
       recognitionRef.current?.stop();
       setIsListening(false);
@@ -122,20 +121,27 @@ export default function AiCoach() {
     }
 
     try {
-        // Always request permission before starting
         await navigator.mediaDevices.getUserMedia({ audio: true });
         
         activeFieldRef.current = field;
-        form.setFocus(field); // Focus the field we're about to listen for
+        form.setFocus(field);
         recognitionRef.current?.start();
         setIsListening(true);
-    } catch (err) {
+    } catch (err: any) {
         console.error('Error getting user media', err);
-        toast({
-            variant: 'destructive',
-            title: 'Microphone Access Required',
-            description: 'Could not access the microphone. Please check your browser permissions.',
-        });
+        if (err.name === 'NotFoundError') {
+             toast({
+                variant: 'destructive',
+                title: 'Microphone Not Found',
+                description: 'No microphone was found on your device. Please connect a microphone and try again.',
+            });
+        } else {
+            toast({
+                variant: 'destructive',
+                title: 'Microphone Access Required',
+                description: 'Could not access the microphone. Please check your browser permissions.',
+            });
+        }
     }
   };
 
