@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -37,7 +37,6 @@ export default function AiCoach() {
   const recognitionRef = useRef<any>(null);
   const activeFieldRef = useRef<ActiveField>('activities');
   
-  // Store the transcript parts here
   const finalTranscriptRef = useRef('');
   
   const { addInteraction } = useApp();
@@ -51,12 +50,14 @@ export default function AiCoach() {
     },
   });
 
-  const handleTextCorrection = async (field: ActiveField, text: string) => {
+  const { setValue, getValues, setFocus } = form;
+
+  const handleTextCorrection = useCallback(async (field: ActiveField, text: string) => {
     if (!text.trim()) return;
     setIsCorrecting(true);
     try {
       const response = await correctText({ rawText: text });
-      form.setValue(field, response.correctedText, { shouldValidate: true });
+      setValue(field, response.correctedText, { shouldValidate: true });
     } catch (error) {
       console.error('Text correction failed:', error);
       toast({
@@ -64,13 +65,55 @@ export default function AiCoach() {
         title: 'Correction Failed',
         description: 'Could not polish the transcribed text. Please review it manually.',
       });
-      // Set the raw text if correction fails
-      form.setValue(field, text, { shouldValidate: true });
+      setValue(field, text, { shouldValidate: true });
     } finally {
       setIsCorrecting(false);
     }
-  };
+  }, [setValue, toast]);
 
+  const handleToggleListening = useCallback(async (field: ActiveField) => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    
+    if (!recognitionRef.current) {
+        toast({
+            variant: 'destructive',
+            title: 'Browser Not Supported',
+            description: 'Your browser does not support voice recognition.',
+        });
+        return;
+    }
+
+    try {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        activeFieldRef.current = field;
+        setFocus(field);
+
+        finalTranscriptRef.current = getValues(field) ? getValues(field) + ' ' : '';
+        
+        recognitionRef.current?.start();
+        setIsListening(true);
+    } catch (err: any) {
+        console.error('Error getting user media', err);
+        
+        if (err.name === 'NotFoundError') {
+             toast({
+                variant: 'destructive',
+                title: 'Microphone Not Found',
+                description: 'No microphone was found on your device. Please connect a microphone and try again.',
+            });
+        } else {
+            toast({
+                variant: 'destructive',
+                title: 'Microphone Access Required',
+                description: 'Could not access the microphone. Please check your browser permissions.',
+            });
+        }
+    }
+  }, [getValues, setFocus, toast, isListening]);
 
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -94,18 +137,15 @@ export default function AiCoach() {
         const currentField = activeFieldRef.current;
         const baseValue = finalTranscriptRef.current;
 
-        // Update final transcript store
         if(finalTranscript.length > 0) {
             finalTranscriptRef.current = baseValue + finalTranscript;
         }
         
-        // Update the UI with interim results for real-time feedback
-        form.setValue(currentField, finalTranscriptRef.current + interimTranscript, { shouldValidate: false });
+        setValue(currentField, finalTranscriptRef.current + interimTranscript, { shouldValidate: false });
       };
 
       recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
         if (event.error === 'no-speech') {
-            // This isn't a critical error, so we can just stop listening.
             setIsListening(false);
             return;
         }
@@ -124,61 +164,21 @@ export default function AiCoach() {
       recognitionRef.current.onend = () => {
           setIsListening(false);
           const finalTranscript = finalTranscriptRef.current;
-          const currentField = activeFieldRef.current;
+          const stoppedField = activeFieldRef.current;
                     
           if(finalTranscript.trim()){
-              handleTextCorrection(currentField, finalTranscript);
+              handleTextCorrection(stoppedField, finalTranscript);
+          }
+
+          // Auto-advance logic
+          if (stoppedField === 'activities' && !getValues('mealTarget')) {
+              handleToggleListening('mealTarget');
+          } else if (stoppedField === 'mealTarget' && !getValues('dietaryRestrictions')) {
+              handleToggleListening('dietaryRestrictions');
           }
       }
-
     }
-  }, [form, toast]);
-
-  const handleToggleListening = async (field: ActiveField) => {
-    if (isListening) {
-      recognitionRef.current?.stop();
-      // onend will handle the rest
-      return;
-    }
-    
-    if (!recognitionRef.current) {
-        toast({
-            variant: 'destructive',
-            title: 'Browser Not Supported',
-            description: 'Your browser does not support voice recognition.',
-        });
-        return;
-    }
-
-    try {
-        await navigator.mediaDevices.getUserMedia({ audio: true });
-        
-        activeFieldRef.current = field;
-        form.setFocus(field);
-
-        // Store current text and reset transcript ref
-        finalTranscriptRef.current = form.getValues(field) ? form.getValues(field) + ' ' : '';
-        
-        recognitionRef.current?.start();
-        setIsListening(true);
-    } catch (err: any) {
-        console.error('Error getting user media', err);
-        
-        if (err.name === 'NotFoundError') {
-             toast({
-                variant: 'destructive',
-                title: 'Microphone Not Found',
-                description: 'No microphone was found on your device. Please connect a microphone and try again.',
-            });
-        } else {
-            toast({
-                variant: 'destructive',
-                title: 'Microphone Access Required',
-                description: 'Could not access the microphone. Please check your browser permissions.',
-            });
-        }
-    }
-  };
+  }, [setValue, toast, getValues, handleTextCorrection, handleToggleListening]);
 
   async function onSubmit(data: PlannerFormValues) {
     setLoading(true);
@@ -207,13 +207,13 @@ export default function AiCoach() {
     }
   }
 
-  const MicButton = ({ field }: { field: ActiveField }) => (
+  const MicButton = ({ field, isTextarea = false }: { field: ActiveField, isTextarea?: boolean }) => (
      <Button
         type="button"
         variant="ghost"
-        size="icon"
+        size="sm"
         onClick={() => handleToggleListening(field)}
-        className={cn('absolute right-2 top-2 z-10', isListening && activeFieldRef.current === field && 'text-destructive')}
+        className={cn('absolute right-2 z-10', isTextarea ? 'top-2' : 'top-1/2 -translate-y-1/2', isListening && activeFieldRef.current === field && 'text-destructive')}
         disabled={isCorrecting}
       >
         {isCorrecting && activeFieldRef.current === field ? <Loader2 className="h-5 w-5 animate-spin" /> : (isListening && activeFieldRef.current === field ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />)}
@@ -254,7 +254,7 @@ export default function AiCoach() {
                         rows={5}
                         {...field}
                       />
-                      <MicButton field="activities" />
+                      <MicButton field="activities" isTextarea />
                     </div>
                   </FormControl>
                    <FormDescription>
@@ -301,6 +301,9 @@ export default function AiCoach() {
                                 <MicButton field="dietaryRestrictions" />
                             </div>
                         </FormControl>
+                         <FormDescription>
+                           Optional.
+                         </FormDescription>
                         <FormMessage />
                         </FormItem>
                     )}
@@ -399,7 +402,7 @@ export default function AiCoach() {
                                 </div>
                             </CardContent>
                         </Card>
-                         <Card className='bg-secondary/50 border-secondary-foreground/20'>
+                         <Card className='border-dashed bg-secondary/50 border-muted-foreground/20'>
                             <CardHeader>
                                 <CardTitle className='text-base'>Edit Your Plan</CardTitle>
                             </CardHeader>
@@ -419,7 +422,3 @@ export default function AiCoach() {
     </Card>
   );
 }
-
-    
-
-    
