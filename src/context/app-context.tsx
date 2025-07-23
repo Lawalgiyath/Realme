@@ -4,8 +4,9 @@
 import type { PersonalizedContentOutput } from '@/ai/flows/personalized-content';
 import type { MentalHealthAssessmentOutput } from '@/ai/flows/mental-health-assessment';
 import React, { createContext, useState, useContext, ReactNode, useMemo, useEffect, useCallback } from 'react';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, type User as FirebaseUser, GoogleAuthProvider, signInWithPopup, signInAnonymously } from 'firebase/auth';
+import { doc, setDoc, onSnapshot, getDoc } from 'firebase/firestore';
 
 export interface Mood {
   mood: 'Happy' | 'Calm' | 'Okay' | 'Anxious' | 'Sad';
@@ -44,15 +45,26 @@ export interface Interaction {
     data: any;
 }
 
+// This defines the structure of the data stored in Firestore for each user.
+interface UserData {
+    moods: Mood[];
+    goals: Goal[];
+    assessmentResult: MentalHealthAssessmentOutput | null;
+    personalizedContent: PersonalizedContentOutput | null;
+    achievements: Achievement[];
+    interactions: Interaction[];
+}
+
+
 interface AppContextType {
   moods: Mood[];
-  setMoods: React.Dispatch<React.SetStateAction<Mood[]>>;
+  setMoods: (moods: Mood[]) => void;
   goals: Goal[];
-  setGoals: React.Dispatch<React.SetStateAction<Goal[]>>;
+  setGoals: (goals: Goal[]) => void;
   assessmentResult: MentalHealthAssessmentOutput | null;
-  setAssessmentResult: React.Dispatch<React.SetStateAction<MentalHealthAssessmentOutput | null>>;
+  setAssessmentResult: (result: MentalHealthAssessmentOutput | null) => void;
   personalizedContent: PersonalizedContentOutput | null;
-  setPersonalizedContent: React.Dispatch<React.SetStateAction<PersonalizedContentOutput | null>>;
+  setPersonalizedContent: (content: PersonalizedContentOutput | null) => void;
   user: User | null;
   signup: (name: string, email: string, password: string) => Promise<FirebaseUser>;
   login: (email: string, password: string) => Promise<FirebaseUser>;
@@ -87,6 +99,15 @@ const initialAchievements: Achievement[] = [
     { id: 'firstResource', name: 'Support Seeker', description: 'Viewed the local resources directory.', unlocked: false },
 ];
 
+const initialData: UserData = {
+    moods: [],
+    goals: [],
+    assessmentResult: null,
+    personalizedContent: null,
+    achievements: initialAchievements,
+    interactions: [],
+};
+
 
 function getRandomAvatar() {
     const animal = animalAvatars[Math.floor(Math.random() * animalAvatars.length)];
@@ -94,74 +115,87 @@ function getRandomAvatar() {
 }
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
-  const [moods, setMoods] = useState<Mood[]>([]);
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [assessmentResult, setAssessmentResult] = useState<MentalHealthAssessmentOutput | null>(null);
-  const [personalizedContent, setPersonalizedContent] = useState<PersonalizedContentOutput | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [achievements, setAchievements] = useState<Achievement[]>(initialAchievements);
-  const [interactions, setInteractions] = useState<Interaction[]>([]);
+  
+  // State for user data, synced with Firestore
+  const [userData, setUserData] = useState<UserData>(initialData);
+  
   const [unlockedAchievement, setUnlockedAchievement] = useState<Achievement | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         const currentUser: User = {
             uid: firebaseUser.uid,
-            name: firebaseUser.displayName || "Guest",
+            name: firebaseUser.displayName || (firebaseUser.isAnonymous ? "Guest" : "User"),
             email: firebaseUser.email,
             avatar: firebaseUser.photoURL || getRandomAvatar(),
             isAnonymous: firebaseUser.isAnonymous
         };
         setUser(currentUser);
-        // Load user-specific data from local storage
-        try {
-            const storedKey = `realme-data-${currentUser.uid}`;
-            const storedData = localStorage.getItem(storedKey);
-            if(storedData) {
-                const data = JSON.parse(storedData);
-                setAchievements(data.achievements || initialAchievements);
-                setInteractions(data.interactions || []);
-                setGoals(data.goals || []);
-                setMoods(data.moods || []);
-                setAssessmentResult(data.assessmentResult || null);
-                setPersonalizedContent(data.personalizedContent || null);
+
+        // Firestore real-time listener
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
+        const unsubscribeFirestore = onSnapshot(userDocRef, (docSnap) => {
+             if (docSnap.exists()) {
+                setUserData(docSnap.data() as UserData);
             } else {
-                 setAchievements(initialAchievements);
-                 setInteractions([]);
-                 setGoals([]);
-                 setMoods([]);
-                 setAssessmentResult(null);
-                 setPersonalizedContent(null);
+                // If the user document doesn't exist (e.g., new user), create it.
+                setDoc(userDocRef, initialData);
+                setUserData(initialData);
             }
-        } catch (e) {
-            console.error("Failed to load user data from localStorage", e)
-        }
+             setLoading(false);
+        });
+
+        return () => unsubscribeFirestore(); // Cleanup listener on unmount or user change
       } else {
         setUser(null);
+        setUserData(initialData); // Reset data on logout
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
-
-  // Effect to save data to local storage whenever it changes
-  useEffect(() => {
-    if (user && !loading) {
-        const storedKey = `realme-data-${user.uid}`;
-        const dataToStore = JSON.stringify({
-            achievements,
-            interactions,
-            goals,
-            moods,
-            assessmentResult,
-            personalizedContent
-        });
-        localStorage.setItem(storedKey, dataToStore);
+  
+  // Generic function to update a part of the user's data in Firestore
+  const updateUserData = useCallback((data: Partial<UserData>) => {
+    if (user) {
+        const userDocRef = doc(db, 'users', user.uid);
+        // Use setDoc with merge: true to update or create fields without overwriting the whole doc
+        setDoc(userDocRef, data, { merge: true });
     }
-  }, [user, loading, achievements, interactions, goals, moods, assessmentResult, personalizedContent]);
+  }, [user]);
+
+  const setGoals = (goals: Goal[]) => updateUserData({ goals });
+  const setMoods = (moods: Mood[]) => {
+      const today = new Date().toISOString().split('T')[0];
+      const otherMoods = userData.moods.filter(m => m.date !== today);
+      updateUserData({ moods: [...otherMoods, ...moods] });
+  };
+
+  const setAssessmentResult = (assessmentResult: MentalHealthAssessmentOutput | null) => updateUserData({ assessmentResult });
+  const setPersonalizedContent = (personalizedContent: PersonalizedContentOutput | null) => updateUserData({ personalizedContent });
+
+  const addAchievement = useCallback((key: AchievementKey) => {
+    if (user?.isAnonymous) return;
+    
+    const achievement = userData.achievements.find(a => a.id === key);
+    if (achievement && !achievement.unlocked) {
+        setUnlockedAchievement({ ...achievement, unlocked: true });
+        const updatedAchievements = userData.achievements.map(a => 
+            a.id === key ? { ...a, unlocked: true } : a
+        );
+        updateUserData({ achievements: updatedAchievements });
+    }
+  }, [user, userData.achievements, updateUserData]);
+
+  const addInteraction = useCallback((interaction: Interaction) => {
+    if (user?.isAnonymous) return;
+    const updatedInteractions = [interaction, ...userData.interactions];
+    updateUserData({ interactions: updatedInteractions });
+  }, [user, userData.interactions, updateUserData]);
 
 
   const signup = async (name: string, email: string, password: string): Promise<FirebaseUser> => {
@@ -172,20 +206,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       photoURL: avatarUrl,
     });
     
-    const newUser: User = {
-        uid: userCredential.user.uid,
-        name,
-        email,
-        avatar: avatarUrl,
-        isAnonymous: false,
-    };
-    setUser(newUser);
-    // Reset data for new user
-    const storedKey = `realme-data-${userCredential.user.uid}`;
-    localStorage.removeItem(storedKey);
-    setAchievements(initialAchievements);
-    setInteractions([]);
-
+    // The onAuthStateChanged listener will handle setting up the new user doc in Firestore
     return userCredential.user;
   };
 
@@ -206,71 +227,45 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const logout = async () => {
-    const userEmail = user?.email;
     await signOut(auth);
-    // Clear all app state on logout
-    setAssessmentResult(null);
-    setPersonalizedContent(null);
-    setGoals([]);
-    setMoods([]);
-    setAchievements(initialAchievements);
-    setInteractions([]);
-    if (userEmail) { // Also clear localstorage for the logged-out user
-        // This is a bit of a guess if they are not anonymous
-         localStorage.removeItem(`realme-achievements-${userEmail}`);
-         localStorage.removeItem(`realme-interactions-${userEmail}`);
-    }
+    // User state will be cleared by the onAuthStateChanged listener
   };
-
-  const addAchievement = useCallback((key: AchievementKey) => {
-    if (user?.isAnonymous) return; // Don't grant achievements to guests
-    setAchievements(prev => {
-        const achievement = prev.find(a => a.id === key);
-        // Only unlock and show popup if it's not already unlocked
-        if (achievement && !achievement.unlocked) {
-            setUnlockedAchievement({ ...achievement, unlocked: true });
-            return prev.map(a => a.id === key ? { ...a, unlocked: true } : a);
-        }
-        return prev; // Return previous state if already unlocked
-    });
-  }, [user]);
-
-  const addInteraction = useCallback((interaction: Interaction) => {
-    if (user?.isAnonymous) return;
-    setInteractions(prev => [interaction, ...prev]);
-  }, [user]);
 
   const clearUnlockedAchievement = () => {
     setUnlockedAchievement(null);
   };
 
 
-  const value = useMemo(() => ({
-    moods,
-    setMoods,
-    goals,
-    setGoals,
-    assessmentResult,
-    setAssessmentResult,
-    personalizedContent,
-    setPersonalizedContent,
+  const value: AppContextType = useMemo(() => ({
     user,
+    loading,
+    goals: userData.goals,
+    moods: userData.moods,
+    assessmentResult: userData.assessmentResult,
+    personalizedContent: userData.personalizedContent,
+    achievements: userData.achievements,
+    interactions: userData.interactions,
+    setGoals,
+    setMoods: (newMoods) => {
+        const today = new Date().toISOString().split('T')[0];
+        const oldMoods = userData.moods.filter(m => m.date !== today);
+        updateUserData({ moods: [...oldMoods, ...newMoods] });
+    },
+    setAssessmentResult,
+    setPersonalizedContent,
     signup,
     login,
     loginWithGoogle,
     loginAnonymously,
     logout,
-    loading,
-    achievements,
     addAchievement,
-    interactions,
     addInteraction,
     unlockedAchievement,
     clearUnlockedAchievement,
-  }), [moods, goals, assessmentResult, personalizedContent, user, loading, achievements, addAchievement, interactions, addInteraction, unlockedAchievement]);
+  }), [user, loading, userData, addAchievement, addInteraction, unlockedAchievement, updateUserData]);
 
   return (
-    <AppContext.Provider value={value as AppContextType}>
+    <AppContext.Provider value={value}>
       {children}
     </AppContext.Provider>
   );

@@ -32,10 +32,7 @@ export default function MoodTracker() {
   }, [moodForToday]);
 
   const handleMoodSelect = (mood: MoodName) => {
-    setMoods(prevMoods => {
-        const otherMoods = prevMoods.filter(m => m.date !== today);
-        return [...otherMoods, { mood, date: today }];
-    });
+    setMoods([{ mood, date: today }]);
     setShowPicker(false);
   };
 
