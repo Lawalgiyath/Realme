@@ -142,7 +142,7 @@ export default function Journal() {
         .slice(0, 5) // Get last 5 relevant interactions
         .map(i => ({
             entry: i.data.request?.journalEntry || i.data.request?.worry || '',
-            response: i.content
+            response: i.content,
         }));
 
       const result = await analyzeJournalEntry({ 
@@ -185,7 +185,7 @@ export default function Journal() {
         type: 'Worry Jar',
         title: 'Worry Reframed',
         content: result.reframedThought,
-        timestamp: new Date().toISOString(),
+        timestamp: new D-ate().toISOString(),
         data: { request: { worry: entry }, response: result },
       });
     } catch (error) {
