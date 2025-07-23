@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview An AI agent for vetting user-submitted success stories.
@@ -52,8 +53,22 @@ const storyVettingFlow = ai.defineFlow(
     inputSchema: StoryVettingInputSchema,
     outputSchema: StoryVettingOutputSchema,
   },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
+  async (input, context) => {
+    const maxRetries = 3;
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        const {output} = await prompt(input);
+        return output!;
+      } catch (error) {
+        context.log.error('Error in storyVettingFlow, retrying...', error as Error);
+        if (i === maxRetries - 1) {
+          throw error; // Re-throw the error on the last attempt
+        }
+        // Wait for a short period before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+      }
+    }
+    // This part should not be reachable if the loop is correct, but for type safety:
+    throw new Error('Flow failed after multiple retries.');
   }
 );

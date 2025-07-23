@@ -51,12 +51,27 @@ const textCorrectionFlow = ai.defineFlow(
     inputSchema: TextCorrectionInputSchema,
     outputSchema: TextCorrectionOutputSchema,
   },
-  async input => {
+  async (input, context) => {
     // If the input is very short, it's likely a test or mistake, so don't bother the AI.
     if (input.rawText.trim().length < 5) {
         return { correctedText: input.rawText };
     }
-    const {output} = await prompt(input);
-    return output!;
+
+    const maxRetries = 3;
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        const {output} = await prompt(input);
+        return output!;
+      } catch (error) {
+        context.log.error('Error in textCorrectionFlow, retrying...', error as Error);
+        if (i === maxRetries - 1) {
+          throw error; // Re-throw the error on the last attempt
+        }
+        // Wait for a short period before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+      }
+    }
+    // This part should not be reachable if the loop is correct, but for type safety:
+    throw new Error('Flow failed after multiple retries.');
   }
 );
