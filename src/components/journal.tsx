@@ -1,12 +1,13 @@
+
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { BookHeart, Loader2, Sparkles, Wand2, Mic, MicOff } from 'lucide-react';
+import { BookHeart, Loader2, Sparkles, Wand2, Mic, MicOff, Goal, GitBranch, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { analyzeJournalEntry } from '@/ai/flows/journal-analysis-flow';
+import { analyzeJournalEntry, JournalAnalysisOutput } from '@/ai/flows/journal-analysis-flow';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { reframeWorry } from '@/ai/flows/worry-jar-flow';
 import { cn } from '@/lib/utils';
@@ -23,14 +24,14 @@ const prompts = [
 
 export default function Journal() {
   const [entry, setEntry] = useState('');
-  const [analysis, setAnalysis] = useState<{ summary: string; reflection: string } | null>(null);
+  const [analysis, setAnalysis] = useState<JournalAnalysisOutput | null>(null);
   const [reframedThought, setReframedThought] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const [placeholder, setPlaceholder] = useState('');
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
-  const { addAchievement, addInteraction } = useApp();
+  const { addAchievement, addInteraction, interactions, goals, moods } = useApp();
 
   useEffect(() => {
     setPlaceholder(prompts[Math.floor(Math.random() * prompts.length)]);
@@ -119,6 +120,7 @@ export default function Journal() {
 
     addAchievement('firstJournal');
     if (entry.trim().length >= 10 && entry.trim().length < 100) {
+        addAchievement('worryJarUse');
         handleWorrySubmit();
         return;
     }
@@ -134,7 +136,21 @@ export default function Journal() {
     setReframedThought('');
 
     try {
-      const result = await analyzeJournalEntry({ journalEntry: entry });
+      const recentInteractions = interactions
+        .filter(i => i.type === 'Journal' || i.type === 'Worry Jar')
+        .slice(0, 5) // Get last 5 relevant interactions
+        .map(i => ({
+            entry: i.data.request?.journalEntry || i.data.request?.worry || '',
+            response: i.content
+        }));
+
+      const result = await analyzeJournalEntry({ 
+        journalEntry: entry,
+        previousInteractions: recentInteractions,
+        userGoals: goals.filter(g => !g.completed).map(g => g.text),
+        currentMood: moods.length > 0 ? moods[moods.length - 1].mood : undefined
+      });
+
       setAnalysis(result);
       addInteraction({
         id: `journal-${Date.now()}`,
@@ -193,7 +209,7 @@ export default function Journal() {
             <div>
                 <CardTitle>Journal with Aya</CardTitle>
                 <CardDescription>
-                Write a short worry or a long reflection. Get a supportive perspective from your guide, Aya.
+                Talk with your personal guide, Aya. Share a short worry or a long reflection to get a supportive perspective.
                 </CardDescription>
             </div>
         </div>
@@ -226,12 +242,12 @@ export default function Journal() {
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Analyzing...
+                Aya is thinking...
               </>
             ) : (
               <>
                 <Wand2 className="mr-2 h-4 w-4" />
-                Analyze My Thoughts
+                Submit to Aya
               </>
             )}
           </Button>
@@ -252,14 +268,26 @@ export default function Journal() {
               <Sparkles className="h-4 w-4 text-primary" />
               <AlertTitle className="font-headline">Aya's Thoughts</AlertTitle>
               <AlertDescription className="mt-4 space-y-4 text-foreground">
-                <div>
-                  <h3 className="font-semibold">Summary of your entry:</h3>
-                  <p className="text-sm">{analysis.summary}</p>
+                <div className="p-4 rounded-md bg-background/50">
+                  <h3 className="font-semibold flex items-center gap-2"><MessageSquare className="h-4 w-4 text-primary" />Summary of your entry:</h3>
+                  <p className="text-sm mt-1">{analysis.summary}</p>
                 </div>
-                <div>
-                  <h3 className="font-semibold">A reflection to consider:</h3>
-                   <p className="text-sm">{analysis.reflection}</p>
+                <div className="p-4 rounded-md bg-background/50">
+                  <h3 className="font-semibold flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" />A reflection to consider:</h3>
+                   <p className="text-sm mt-1">{analysis.reflection}</p>
                 </div>
+                {analysis.patternInsight && (
+                  <div className="p-4 rounded-md bg-background/50 border border-primary/20">
+                    <h3 className="font-semibold flex items-center gap-2"><GitBranch className="h-4 w-4 text-primary" />A pattern Aya noticed:</h3>
+                    <p className="text-sm mt-1">{analysis.patternInsight}</p>
+                  </div>
+                )}
+                {analysis.goalConnection && (
+                  <div className="p-4 rounded-md bg-background/50 border border-primary/20">
+                    <h3 className="font-semibold flex items-center gap-2"><Goal className="h-4 w-4 text-primary" />Connecting to your goals:</h3>
+                    <p className="text-sm mt-1">{analysis.goalConnection}</p>
+                  </div>
+                )}
               </AlertDescription>
             </Alert>
         )}
