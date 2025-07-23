@@ -34,7 +34,7 @@ export default function Profile() {
                     <Avatar className="h-24 w-24 border-4 border-primary/20">
                     <AvatarImage src={user.avatar ?? undefined} alt={user.name ?? ''} />
                     <AvatarFallback className="text-3xl">
-                        {user.name?.[0].toUpperCase()}
+                        {user.name?.[0].toUpperCase() ?? 'G'}
                     </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
@@ -50,7 +50,7 @@ export default function Profile() {
                             <ShieldQuestion className="h-12 w-12 text-primary mx-auto mb-4" />
                             <h3 className="text-xl font-semibold">Save Your Progress</h3>
                             <p className="text-muted-foreground mt-2 mb-4">
-                                Sign up for a free account to save your goals, moods, and achievements.
+                                Sign up for a free account to save your goals, moods, and achievements. Your data is not being saved.
                             </p>
                             <Button onClick={() => router.push('/signup')}>
                                 Sign Up Now

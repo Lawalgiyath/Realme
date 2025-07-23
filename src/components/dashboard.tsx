@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from 'react';
@@ -188,8 +189,8 @@ export default function Dashboard() {
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                     <Avatar className="h-10 w-10">
                         <AvatarImage
-                            src={user?.avatar}
-                            alt={user?.name}
+                            src={user?.avatar || undefined}
+                            alt={user?.name || ''}
                             data-ai-hint="animal avatar"
                         />
                         <AvatarFallback>{user?.name?.[0].toUpperCase()}</AvatarFallback>

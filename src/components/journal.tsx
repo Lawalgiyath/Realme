@@ -185,7 +185,7 @@ export default function Journal() {
         type: 'Worry Jar',
         title: 'Worry Reframed',
         content: result.reframedThought,
-        timestamp: new D-ate().toISOString(),
+        timestamp: new Date().toISOString(),
         data: { request: { worry: entry }, response: result },
       });
     } catch (error) {
