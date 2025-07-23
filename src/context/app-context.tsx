@@ -7,6 +7,7 @@ import React, { createContext, useState, useContext, ReactNode, useMemo, useEffe
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, type User as FirebaseUser, GoogleAuthProvider, signInWithPopup, signInAnonymously } from 'firebase/auth';
 import { doc, setDoc, onSnapshot, getDoc } from 'firebase/firestore';
+import { DailyPlannerOutput } from '@/ai/flows/daily-planner-flow';
 
 export interface Mood {
   mood: 'Happy' | 'Calm' | 'Okay' | 'Anxious' | 'Sad';
@@ -53,6 +54,8 @@ interface UserData {
     personalizedContent: PersonalizedContentOutput | null;
     achievements: Achievement[];
     interactions: Interaction[];
+    dailyPlan?: DailyPlannerOutput | null;
+    dailyPlanTimestamp?: string | null;
 }
 
 
@@ -78,6 +81,8 @@ interface AppContextType {
   addInteraction: (interaction: Interaction) => void;
   unlockedAchievement: Achievement | null;
   clearUnlockedAchievement: () => void;
+  dailyPlan: DailyPlannerOutput | null;
+  setDailyPlan: (plan: DailyPlannerOutput | null) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -106,6 +111,8 @@ const initialData: UserData = {
     personalizedContent: null,
     achievements: initialAchievements,
     interactions: [],
+    dailyPlan: null,
+    dailyPlanTimestamp: null,
 };
 
 
@@ -139,7 +146,19 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         const unsubscribeFirestore = onSnapshot(userDocRef, (docSnap) => {
              if (docSnap.exists()) {
-                setUserData(docSnap.data() as UserData);
+                const data = docSnap.data() as UserData;
+                // Check if the plan is older than 24 hours
+                if (data.dailyPlanTimestamp) {
+                    const planDate = new Date(data.dailyPlanTimestamp);
+                    const now = new Date();
+                    const diffHours = (now.getTime() - planDate.getTime()) / (1000 * 60 * 60);
+                    if (diffHours > 24) {
+                        data.dailyPlan = null;
+                        data.dailyPlanTimestamp = null;
+                        // No need to write back to DB here, will be overwritten on next plan generation
+                    }
+                }
+                setUserData(data);
             } else {
                 // If the user document doesn't exist (e.g., new user), create it.
                 setDoc(userDocRef, initialData);
@@ -177,6 +196,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const setAssessmentResult = (assessmentResult: MentalHealthAssessmentOutput | null) => updateUserData({ assessmentResult });
   const setPersonalizedContent = (personalizedContent: PersonalizedContentOutput | null) => updateUserData({ personalizedContent });
+
+  const setDailyPlan = (dailyPlan: DailyPlannerOutput | null) => {
+    if (dailyPlan) {
+        updateUserData({ dailyPlan, dailyPlanTimestamp: new Date().toISOString() });
+    } else {
+        updateUserData({ dailyPlan: null, dailyPlanTimestamp: null });
+    }
+  };
 
   const addAchievement = useCallback((key: AchievementKey) => {
     if (user?.isAnonymous) return;
@@ -245,6 +272,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     personalizedContent: userData.personalizedContent,
     achievements: userData.achievements,
     interactions: userData.interactions,
+    dailyPlan: userData.dailyPlan || null,
     setGoals,
     setMoods: (newMoods) => {
         const today = new Date().toISOString().split('T')[0];
@@ -253,6 +281,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     },
     setAssessmentResult,
     setPersonalizedContent,
+    setDailyPlan,
     signup,
     login,
     loginWithGoogle,
