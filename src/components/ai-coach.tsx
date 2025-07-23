@@ -104,6 +104,12 @@ export default function AiCoach() {
       };
 
       recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
+        if (event.error === 'no-speech') {
+            // This isn't a critical error, so we can just stop listening.
+            setIsListening(false);
+            return;
+        }
+
         console.error('Speech recognition error', event.error);
          if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
             toast({
@@ -385,6 +391,7 @@ export default function AiCoach() {
                                 <div>
                                     <h4 className="font-semibold text-foreground">Lunch</h4>
                                     <p className="text-muted-foreground">{result.mealPlan.lunch}</p>
+
                                 </div>
                                 <div>
                                     <h4 className="font-semibold text-foreground">Dinner</h4>
@@ -412,5 +419,7 @@ export default function AiCoach() {
     </Card>
   );
 }
+
+    
 
     
