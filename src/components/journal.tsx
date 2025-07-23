@@ -109,17 +109,18 @@ export default function Journal() {
   };
 
   const handleAnalyzeEntry = async () => {
-    if (entry.trim().length < 10) {
+    if (entry.trim().length < 20) {
       toast({
         variant: 'destructive',
         title: 'Please write a bit more.',
-        description: 'Your entry should be at least 10 characters long.',
+        description: 'For a short worry, please write at least 20 characters. For a deeper analysis, please write at least 100 characters.',
       });
       return;
     }
-
+    
     addAchievement('firstJournal');
-    if (entry.trim().length >= 10 && entry.trim().length < 100) {
+
+    if (entry.trim().length >= 20 && entry.trim().length < 100) {
         addAchievement('worryJarUse');
         handleWorrySubmit();
         return;
