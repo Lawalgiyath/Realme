@@ -140,13 +140,24 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             uid: firebaseUser.uid,
             name: firebaseUser.displayName || (firebaseUser.isAnonymous ? "Guest" : "User"),
             email: firebaseUser.email,
-            avatar: firebaseUser.photoURL || getRandomAvatar(),
+            avatar: firebaseUser.photoURL,
             isAnonymous: firebaseUser.isAnonymous
         };
         setUser(currentUser);
 
-        // Firestore real-time listener
         const userDocRef = doc(db, 'users', firebaseUser.uid);
+
+        // Check if user document exists, create it if not
+        const docSnap = await getDoc(userDocRef);
+        if (!docSnap.exists()) {
+          try {
+            await setDoc(userDocRef, initialData);
+          } catch(e) {
+            console.error("Error creating user document:", e);
+          }
+        }
+        
+        // Firestore real-time listener
         const unsubscribeFirestore = onSnapshot(userDocRef, (docSnap) => {
              if (docSnap.exists()) {
                 const data = docSnap.data() as UserData;
@@ -158,19 +169,17 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
                     if (diffHours > 24) {
                         data.dailyPlan = null;
                         data.dailyPlanTimestamp = null;
-                        // No need to write back to DB here, will be overwritten on next plan generation
                     }
                 }
                 setUserData(data);
-            } else {
-                // If the user document doesn't exist (e.g., new user), create it.
-                setDoc(userDocRef, initialData);
-                setUserData(initialData);
             }
              setLoading(false);
+        }, (error) => {
+            console.error("Firestore snapshot error:", error);
+            setLoading(false);
         });
 
-        return () => unsubscribeFirestore(); // Cleanup listener on unmount or user change
+        return () => unsubscribeFirestore();
       } else {
         setUser(null);
         setUserData(initialData); // Reset data on logout
@@ -181,11 +190,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     return () => unsubscribe();
   }, []);
   
-  // Generic function to update a part of the user's data in Firestore
   const updateUserData = useCallback((data: Partial<UserData>) => {
     if (user && !user.isAnonymous) {
         const userDocRef = doc(db, 'users', user.uid);
-        // Use setDoc with merge: true to update or create fields without overwriting the whole doc
         setDoc(userDocRef, data, { merge: true });
     }
   }, [user]);
@@ -247,7 +254,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       photoURL: avatarUrl,
     });
     
-    // The onAuthStateChanged listener will handle setting up the new user doc in Firestore
     return userCredential.user;
   };
 
@@ -269,7 +275,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     await signOut(auth);
-    // User state will be cleared by the onAuthStateChanged listener
   };
 
   const clearUnlockedAchievement = () => {
