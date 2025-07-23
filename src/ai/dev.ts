@@ -1,3 +1,4 @@
+'use server';
 import { config } from 'dotenv';
 config();
 
@@ -7,3 +8,4 @@ import '@/ai/flows/worry-jar-flow.ts';
 import '@/ai/flows/journal-analysis-flow.ts';
 import '@/ai/flows/daily-planner-flow.ts';
 import '@/ai/flows/story-vetting-flow.ts';
+import '@/ai/flows/text-correction-flow.ts';

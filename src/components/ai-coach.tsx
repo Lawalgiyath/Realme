@@ -1,10 +1,11 @@
+
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Bot, Utensils, Calendar, Loader2, Sparkles, Wand2, Mic, MicOff } from 'lucide-react';
+import { Bot, Utensils, Calendar, Loader2, Sparkles, Wand2, Mic, MicOff, Check, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -12,9 +13,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { planDay, DailyPlannerOutput } from '@/ai/flows/daily-planner-flow';
-import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { correctText } from '@/ai/flows/text-correction-flow';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/context/app-context';
+import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 
 const plannerSchema = z.object({
   activities: z.string().min(10, 'Please describe your day in a bit more detail.'),
@@ -29,10 +31,12 @@ type ActiveField = 'activities' | 'mealTarget' | 'dietaryRestrictions';
 export default function AiCoach() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [isCorrecting, setIsCorrecting] = useState(false);
   const [result, setResult] = useState<DailyPlannerOutput | null>(null);
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
   const activeFieldRef = useRef<ActiveField>('activities');
+  const interimTranscriptRef = useRef('');
   const { addInteraction } = useApp();
 
   const form = useForm<PlannerFormValues>({
@@ -44,6 +48,27 @@ export default function AiCoach() {
     },
   });
 
+  const handleTextCorrection = async (field: ActiveField, text: string) => {
+    if (!text.trim()) return;
+    setIsCorrecting(true);
+    try {
+      const response = await correctText({ rawText: text });
+      form.setValue(field, response.correctedText, { shouldValidate: true });
+    } catch (error) {
+      console.error('Text correction failed:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Correction Failed',
+        description: 'Could not polish the transcribed text. Please review it manually.',
+      });
+      // Set the raw text if correction fails
+      form.setValue(field, text, { shouldValidate: true });
+    } finally {
+      setIsCorrecting(false);
+    }
+  };
+
+
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
@@ -52,37 +77,16 @@ export default function AiCoach() {
       recognitionRef.current.interimResults = true;
 
       recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
-        let finalTranscript = '';
+        let transcript = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
-          if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript.trim() + ' ';
-          }
+          transcript += event.results[i][0].transcript;
         }
-        
-        const lowerCaseTranscript = finalTranscript.toLowerCase().trim();
+        interimTranscriptRef.current = transcript;
+
+        // Update the form field with the interim transcript for real-time feedback
         const currentField = activeFieldRef.current;
         const currentFieldValue = form.getValues(currentField) || '';
-
-        const stopListeningAndSwitch = (field: ActiveField) => {
-             recognitionRef.current?.stop();
-             form.setFocus(field);
-        };
-
-        if (lowerCaseTranscript.includes('dietary restrictions')) {
-            const cleanTranscript = finalTranscript.replace(/dietary restrictions/gi, '').trim();
-            if (cleanTranscript) {
-              form.setValue(currentField, currentFieldValue + cleanTranscript + ' ');
-            }
-            stopListeningAndSwitch('dietaryRestrictions');
-        } else if (lowerCaseTranscript.includes('meal plan')) {
-            const cleanTranscript = finalTranscript.replace(/meal plan/gi, '').trim();
-            if (cleanTranscript) {
-                form.setValue(currentField, currentFieldValue + cleanTranscript + ' ');
-            }
-            stopListeningAndSwitch('mealTarget');
-        } else {
-             form.setValue(currentField, currentFieldValue + finalTranscript);
-        }
+        form.setValue(currentField, currentFieldValue.substring(0, currentFieldValue.lastIndexOf('...')) + transcript);
       };
 
       recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
@@ -99,6 +103,16 @@ export default function AiCoach() {
       
       recognitionRef.current.onend = () => {
           setIsListening(false);
+          const finalTranscript = interimTranscriptRef.current;
+          const currentField = activeFieldRef.current;
+          const currentFieldValue = form.getValues(currentField) || '';
+          
+          // Clean up the field value before sending for correction
+          const cleanedValue = currentFieldValue.replace(/\.\.\.$/, '');
+          
+          if(finalTranscript.trim()){
+              handleTextCorrection(currentField, cleanedValue);
+          }
       }
 
     }
@@ -107,10 +121,9 @@ export default function AiCoach() {
   const handleToggleListening = async (field: ActiveField) => {
     if (isListening) {
       recognitionRef.current?.stop();
-      setIsListening(false);
-      return;
+      return; // onend will handle the rest
     }
-
+    
     if (!recognitionRef.current) {
         toast({
             variant: 'destructive',
@@ -125,10 +138,23 @@ export default function AiCoach() {
         
         activeFieldRef.current = field;
         form.setFocus(field);
+
+        // Append '...' to indicate listening
+        const currentFieldValue = form.getValues(field);
+        if (currentFieldValue) {
+            form.setValue(field, currentFieldValue + '...');
+        } else {
+             form.setValue(field, '...');
+        }
+        
+        interimTranscriptRef.current = '';
         recognitionRef.current?.start();
         setIsListening(true);
     } catch (err: any) {
         console.error('Error getting user media', err);
+        const currentFieldValue = form.getValues(field);
+        form.setValue(field, currentFieldValue.replace(/\.\.\.$/, '')); // Clean up on error
+        
         if (err.name === 'NotFoundError') {
              toast({
                 variant: 'destructive',
@@ -172,6 +198,20 @@ export default function AiCoach() {
     }
   }
 
+  const MicButton = ({ field }: { field: ActiveField }) => (
+     <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => handleToggleListening(field)}
+        className={cn(isListening && activeFieldRef.current === field && 'text-destructive')}
+        disabled={isCorrecting}
+      >
+        {isCorrecting && activeFieldRef.current === field ? <Loader2 className="h-5 w-5 animate-spin" /> : (isListening && activeFieldRef.current === field ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />)}
+        <span className="sr-only">{isListening ? 'Stop listening' : 'Start listening'}</span>
+      </Button>
+  )
+
   return (
     <Card>
       <CardHeader>
@@ -197,16 +237,7 @@ export default function AiCoach() {
                 <FormItem>
                    <FormLabel className="text-base flex items-center justify-between">
                     What's on your schedule today?
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleToggleListening('activities')}
-                        className={cn(isListening && activeFieldRef.current === 'activities' && 'text-destructive')}
-                        >
-                        {isListening && activeFieldRef.current === 'activities' ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-                        <span className="sr-only">{isListening ? 'Stop listening' : 'Start listening'}</span>
-                    </Button>
+                    <MicButton field="activities" />
                   </FormLabel>
                   <FormControl>
                     <Textarea
@@ -215,8 +246,8 @@ export default function AiCoach() {
                     {...field}
                     />
                   </FormControl>
-                  <FormDescription>
-                    List your tasks, then say "meal plan" to continue, or "dietary restrictions" to add preferences.
+                   <FormDescription>
+                    Click the mic to speak. Aya will polish your transcription.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -229,16 +260,7 @@ export default function AiCoach() {
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel className="text-base flex items-center justify-between">What's your meal target?
-                             <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleToggleListening('mealTarget')}
-                                className={cn(isListening && activeFieldRef.current === 'mealTarget' && 'text-destructive')}
-                                >
-                                {isListening && activeFieldRef.current === 'mealTarget' ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-                                <span className="sr-only">{isListening ? 'Stop listening' : 'Start listening'}</span>
-                            </Button>
+                            <MicButton field="mealTarget" />
                         </FormLabel>
                         <FormControl>
                             <Input 
@@ -256,16 +278,7 @@ export default function AiCoach() {
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel className="text-base flex items-center justify-between">Any dietary restrictions?
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleToggleListening('dietaryRestrictions')}
-                                className={cn(isListening && activeFieldRef.current === 'dietaryRestrictions' && 'text-destructive')}
-                                >
-                                {isListening && activeFieldRef.current === 'dietaryRestrictions' ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-                                <span className="sr-only">{isListening ? 'Stop listening' : 'Start listening'}</span>
-                            </Button>
+                           <MicButton field="dietaryRestrictions" />
                         </FormLabel>
                         <FormControl>
                             <Input 
@@ -278,19 +291,27 @@ export default function AiCoach() {
                     )}
                     />
             </div>
-            <Button type="submit" disabled={loading} size="lg">
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Planning Your Day...
-                </>
-              ) : (
-                <>
-                  <Wand2 className="mr-2 h-4 w-4" />
-                  Generate My Plan
-                </>
-              )}
-            </Button>
+            <div className='flex justify-between items-center'>
+                <Button type="submit" disabled={loading || isCorrecting} size="lg">
+                {loading ? (
+                    <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Planning Your Day...
+                    </>
+                ) : (
+                    <>
+                    <Wand2 className="mr-2 h-4 w-4" />
+                    Generate My Plan
+                    </>
+                )}
+                </Button>
+                {isCorrecting && (
+                    <div className='flex items-center gap-2 text-sm text-muted-foreground'>
+                        <Loader2 className='h-4 w-4 animate-spin' />
+                        Polishing your words...
+                    </div>
+                )}
+            </div>
           </form>
         </Form>
         
@@ -302,46 +323,84 @@ export default function AiCoach() {
         )}
 
         {result && (
-          <Alert className="mt-8 bg-secondary border-secondary-foreground/20 animate-in fade-in-50">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <AlertTitle className="font-headline">Your Personalized Plan from Aya</AlertTitle>
-            <AlertDescription className="mt-4 space-y-6 text-foreground">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="mt-8 animate-in fade-in-50 space-y-6">
+                 <Alert className="bg-green-50 border-green-200 text-green-800">
+                    <Sparkles className="h-4 w-4 text-green-600" />
+                    <AlertTitle className="font-headline text-green-900">Your Personalized Plan is Ready</AlertTitle>
+                    <AlertDescription>
+                        Here is a structured plan Aya created to help you have a productive and healthy day.
+                    </AlertDescription>
+                </Alert>
+
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
                     {/* Daily Plan */}
-                    <div>
-                        <h3 className="font-semibold mb-3 flex items-center gap-2"><Calendar className="h-5 w-5 text-primary" /> Daily Schedule</h3>
-                        <div className="space-y-2">
-                            {result.dailyPlan.map((item, index) => (
-                                <div key={index} className="flex items-start gap-3 p-2 rounded-md bg-background/50">
-                                    <div className="font-mono text-sm text-primary pt-0.5">{item.time}</div>
-                                    <p className="text-sm">{item.activity}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                    <Card className="lg:col-span-3">
+                         <CardHeader>
+                            <CardTitle className='flex items-center gap-3'>
+                                <Calendar className="h-6 w-6 text-primary" />
+                                Daily Schedule
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-3">
+                                {result.dailyPlan.map((item, index) => (
+                                    <div key={index} className="flex items-start gap-4 p-3 rounded-lg border bg-background/50 relative">
+                                        <div className="absolute top-4 left-4 h-full border-l-2 border-primary/20"></div>
+                                        <div className="z-10 h-6 w-6 rounded-full bg-background flex items-center justify-center border-2 border-primary/30 mt-1">
+                                            {item.isMeal ? <Utensils className="h-4 w-4 text-primary/80"/> : <Check className="h-4 w-4 text-primary"/>}
+                                        </div>
+                                        <div className='flex-1'>
+                                            <p className="font-mono text-sm text-primary">{item.time}</p>
+                                            <p className="font-medium text-foreground">{item.activity}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+
                     {/* Meal Plan */}
-                    <div>
-                        <h3 className="font-semibold mb-3 flex items-center gap-2"><Utensils className="h-5 w-5 text-primary" /> Meal Plan</h3>
-                        <div className="space-y-3">
-                            <div>
-                                <h4 className="font-medium text-sm">Breakfast</h4>
-                                <p className="text-sm text-muted-foreground">{result.mealPlan.breakfast}</p>
-                            </div>
-                             <div>
-                                <h4 className="font-medium text-sm">Lunch</h4>
-                                <p className="text-sm text-muted-foreground">{result.mealPlan.lunch}</p>
-                            </div>
-                             <div>
-                                <h4 className="font-medium text-sm">Dinner</h4>
-                                <p className="text-sm text-muted-foreground">{result.mealPlan.dinner}</p>
-                            </div>
-                        </div>
+                    <div className="lg:col-span-2 space-y-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className='flex items-center gap-3'>
+                                    <Utensils className="h-6 w-6 text-primary" />
+                                    Meal Plan
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div>
+                                    <h4 className="font-semibold text-foreground">Breakfast</h4>
+                                    <p className="text-muted-foreground">{result.mealPlan.breakfast}</p>
+                                </div>
+                                <div>
+                                    <h4 className="font-semibold text-foreground">Lunch</h4>
+                                    <p className="text-muted-foreground">{result.mealPlan.lunch}</p>
+                                </div>
+                                <div>
+                                    <h4 className="font-semibold text-foreground">Dinner</h4>
+                                    <p className="text-muted-foreground">{result.mealPlan.dinner}</p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                         <Card className='bg-secondary/50 border-secondary-foreground/20'>
+                            <CardHeader>
+                                <CardTitle className='text-base'>Edit Your Plan</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className='text-sm text-muted-foreground mb-4'>Need to make a change? You can edit the generated plan by modifying your original input and regenerating it.</p>
+                                <Button variant="secondary" size="sm" onClick={() => setResult(null)}>
+                                    <Edit className='mr-2 h-4 w-4'/>
+                                    Edit My Input
+                                </Button>
+                            </CardContent>
+                        </Card>
                     </div>
                 </div>
-            </AlertDescription>
-          </Alert>
+            </div>
         )}
       </CardContent>
     </Card>
   );
 }
+
