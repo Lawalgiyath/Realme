@@ -51,6 +51,7 @@ interface UserData {
     moods: Mood[];
     goals: Goal[];
     assessmentResult: MentalHealthAssessmentOutput | null;
+    assessmentTimestamp: string | null;
     personalizedContent: PersonalizedContentOutput | null;
     achievements: Achievement[];
     interactions: Interaction[];
@@ -65,6 +66,7 @@ interface AppContextType {
   goals: Goal[];
   setGoals: (goals: Goal[]) => void;
   assessmentResult: MentalHealthAssessmentOutput | null;
+  assessmentTimestamp: string | null;
   setAssessmentResult: (result: MentalHealthAssessmentOutput | null) => void;
   personalizedContent: PersonalizedContentOutput | null;
   setPersonalizedContent: (content: PersonalizedContentOutput | null) => void;
@@ -108,6 +110,7 @@ const initialData: UserData = {
     moods: [],
     goals: [],
     assessmentResult: null,
+    assessmentTimestamp: null,
     personalizedContent: null,
     achievements: initialAchievements,
     interactions: [],
@@ -180,7 +183,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   
   // Generic function to update a part of the user's data in Firestore
   const updateUserData = useCallback((data: Partial<UserData>) => {
-    if (user) {
+    if (user && !user.isAnonymous) {
         const userDocRef = doc(db, 'users', user.uid);
         // Use setDoc with merge: true to update or create fields without overwriting the whole doc
         setDoc(userDocRef, data, { merge: true });
@@ -194,7 +197,18 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       updateUserData({ moods: [...otherMoods, ...moods] });
   };
 
-  const setAssessmentResult = (assessmentResult: MentalHealthAssessmentOutput | null) => updateUserData({ assessmentResult });
+  const setAssessmentResult = (assessmentResult: MentalHealthAssessmentOutput | null) => {
+    if (assessmentResult) {
+         updateUserData({ 
+            assessmentResult, 
+            assessmentTimestamp: new Date().toISOString(),
+            personalizedContent: null // Reset content plan on new assessment
+        });
+    } else {
+        updateUserData({ assessmentResult: null, assessmentTimestamp: null });
+    }
+  };
+
   const setPersonalizedContent = (personalizedContent: PersonalizedContentOutput | null) => updateUserData({ personalizedContent });
 
   const setDailyPlan = (dailyPlan: DailyPlannerOutput | null) => {
@@ -269,6 +283,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     goals: userData.goals,
     moods: userData.moods,
     assessmentResult: userData.assessmentResult,
+    assessmentTimestamp: userData.assessmentTimestamp,
     personalizedContent: userData.personalizedContent,
     achievements: userData.achievements,
     interactions: userData.interactions,
