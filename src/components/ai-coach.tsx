@@ -36,7 +36,10 @@ export default function AiCoach() {
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
   const activeFieldRef = useRef<ActiveField>('activities');
-  const interimTranscriptRef = useRef('');
+  
+  // Store the transcript parts here
+  const finalTranscriptRef = useRef('');
+  
   const { addInteraction } = useApp();
 
   const form = useForm<PlannerFormValues>({
@@ -77,16 +80,27 @@ export default function AiCoach() {
       recognitionRef.current.interimResults = true;
 
       recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
-        let transcript = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript;
-        }
-        interimTranscriptRef.current = transcript;
+        let interimTranscript = '';
+        let finalTranscript = '';
 
-        // Update the form field with the interim transcript for real-time feedback
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript + ' ';
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+        
         const currentField = activeFieldRef.current;
-        const currentFieldValue = form.getValues(currentField) || '';
-        form.setValue(currentField, currentFieldValue.substring(0, currentFieldValue.lastIndexOf('...')) + transcript);
+        const baseValue = finalTranscriptRef.current;
+
+        // Update final transcript store
+        if(finalTranscript.length > 0) {
+            finalTranscriptRef.current = baseValue + finalTranscript;
+        }
+        
+        // Update the UI with interim results for real-time feedback
+        form.setValue(currentField, finalTranscriptRef.current + interimTranscript, { shouldValidate: false });
       };
 
       recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
@@ -103,15 +117,11 @@ export default function AiCoach() {
       
       recognitionRef.current.onend = () => {
           setIsListening(false);
-          const finalTranscript = interimTranscriptRef.current;
+          const finalTranscript = finalTranscriptRef.current;
           const currentField = activeFieldRef.current;
-          const currentFieldValue = form.getValues(currentField) || '';
-          
-          // Clean up the field value before sending for correction
-          const cleanedValue = currentFieldValue.replace(/\.\.\.$/, '');
-          
+                    
           if(finalTranscript.trim()){
-              handleTextCorrection(currentField, cleanedValue);
+              handleTextCorrection(currentField, finalTranscript);
           }
       }
 
@@ -121,7 +131,8 @@ export default function AiCoach() {
   const handleToggleListening = async (field: ActiveField) => {
     if (isListening) {
       recognitionRef.current?.stop();
-      return; // onend will handle the rest
+      // onend will handle the rest
+      return;
     }
     
     if (!recognitionRef.current) {
@@ -139,21 +150,13 @@ export default function AiCoach() {
         activeFieldRef.current = field;
         form.setFocus(field);
 
-        // Append '...' to indicate listening
-        const currentFieldValue = form.getValues(field);
-        if (currentFieldValue) {
-            form.setValue(field, currentFieldValue + '...');
-        } else {
-             form.setValue(field, '...');
-        }
+        // Store current text and reset transcript ref
+        finalTranscriptRef.current = form.getValues(field) ? form.getValues(field) + ' ' : '';
         
-        interimTranscriptRef.current = '';
         recognitionRef.current?.start();
         setIsListening(true);
     } catch (err: any) {
         console.error('Error getting user media', err);
-        const currentFieldValue = form.getValues(field);
-        form.setValue(field, currentFieldValue.replace(/\.\.\.$/, '')); // Clean up on error
         
         if (err.name === 'NotFoundError') {
              toast({
@@ -176,7 +179,6 @@ export default function AiCoach() {
     setResult(null);
     try {
       const plan = await planDay(data);
-      setResult(plan);
       addInteraction({
         id: `plan-${Date.now()}`,
         type: 'Planner',
@@ -185,6 +187,7 @@ export default function AiCoach() {
         timestamp: new Date().toISOString(),
         data: { request: data, response: plan },
       });
+      setResult(plan);
 
     } catch (error) {
       console.error('Failed to generate plan:', error);
@@ -204,7 +207,7 @@ export default function AiCoach() {
         variant="ghost"
         size="icon"
         onClick={() => handleToggleListening(field)}
-        className={cn(isListening && activeFieldRef.current === field && 'text-destructive')}
+        className={cn('absolute right-2 top-2 z-10', isListening && activeFieldRef.current === field && 'text-destructive')}
         disabled={isCorrecting}
       >
         {isCorrecting && activeFieldRef.current === field ? <Loader2 className="h-5 w-5 animate-spin" /> : (isListening && activeFieldRef.current === field ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />)}
@@ -237,14 +240,16 @@ export default function AiCoach() {
                 <FormItem>
                    <FormLabel className="text-base flex items-center justify-between">
                     What's on your schedule today?
-                    <MicButton field="activities" />
                   </FormLabel>
-                  <FormControl>
-                    <Textarea
-                    placeholder="e.g., Morning meeting at 10am, finish project report, gym session in the evening..."
-                    rows={5}
-                    {...field}
-                    />
+                   <FormControl>
+                    <div className="relative">
+                      <Textarea
+                        placeholder="e.g., Morning meeting at 10am, finish project report, gym session in the evening..."
+                        rows={5}
+                        {...field}
+                      />
+                      <MicButton field="activities" />
+                    </div>
                   </FormControl>
                    <FormDescription>
                     Click the mic to speak. Aya will polish your transcription.
@@ -260,13 +265,15 @@ export default function AiCoach() {
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel className="text-base flex items-center justify-between">What's your meal target?
-                            <MicButton field="mealTarget" />
                         </FormLabel>
                         <FormControl>
-                            <Input 
-                                placeholder="e.g., High protein, low carb, balanced" 
-                                {...field} 
-                            />
+                           <div className="relative">
+                                <Input 
+                                    placeholder="e.g., High protein, low carb, balanced" 
+                                    {...field} 
+                                />
+                                <MicButton field="mealTarget" />
+                            </div>
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -278,13 +285,15 @@ export default function AiCoach() {
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel className="text-base flex items-center justify-between">Any dietary restrictions?
-                           <MicButton field="dietaryRestrictions" />
                         </FormLabel>
                         <FormControl>
-                            <Input 
-                                placeholder="e.g., Vegetarian, nut allergy" 
-                                {...field} 
-                            />
+                            <div className="relative">
+                                <Input 
+                                    placeholder="e.g., Vegetarian, nut allergy" 
+                                    {...field} 
+                                />
+                                <MicButton field="dietaryRestrictions" />
+                            </div>
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -315,7 +324,7 @@ export default function AiCoach() {
           </form>
         </Form>
         
-        {loading && (
+        {loading && !result && (
              <div className="flex flex-col items-center justify-center gap-4 text-center pt-8">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
                 <p className="text-muted-foreground">Aya is building your plan...</p>
@@ -404,3 +413,4 @@ export default function AiCoach() {
   );
 }
 
+    
