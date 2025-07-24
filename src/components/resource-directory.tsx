@@ -1,5 +1,10 @@
+
+"use client";
+
 import { Phone, Globe, MessageSquare } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useApp } from '@/context/app-context';
+import { useEffect } from 'react';
 
 const resources = [
   {
@@ -35,6 +40,12 @@ const resources = [
 ];
 
 export default function ResourceDirectory() {
+  const { addAchievement } = useApp();
+
+  useEffect(() => {
+    addAchievement('firstResource');
+  }, [addAchievement]);
+  
   return (
     <Card>
       <CardHeader>
@@ -64,3 +75,5 @@ export default function ResourceDirectory() {
     </Card>
   );
 }
+
+    
