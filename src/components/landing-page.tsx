@@ -1,12 +1,162 @@
+
 "use client";
-import { HeartPulse, Rocket, Sparkles, BrainCircuit, BarChart, Users, BookHeart, ShieldCheck, Sun, Moon, ArrowRight } from 'lucide-react';
+import { HeartPulse, Rocket, Sparkles, BrainCircuit, BarChart, Users, BookHeart, ShieldCheck, Sun, Moon, ArrowRight, MousePointerClick, Gamepad2, Rabbit, Cat, Dog, Bird } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/app-context';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
+import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
+
+// Bubble Pop Game Component
+const BubblePopGame = () => {
+    const [bubbles, setBubbles] = useState<{ id: number; x: number; y: number; size: number }[]>([]);
+    const [score, setScore] = useState(0);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (bubbles.length < 15) {
+                const newBubble = {
+                    id: Date.now(),
+                    x: Math.random() * 100,
+                    y: 110, // Start from below the view
+                    size: Math.random() * 30 + 20,
+                };
+                setBubbles(prev => [...prev, newBubble]);
+            }
+        }, 1000); // Add a new bubble every second
+
+        return () => clearInterval(interval);
+    }, [bubbles.length]);
+    
+    useEffect(() => {
+        const moveInterval = setInterval(() => {
+            setBubbles(prev => prev.map(b => ({ ...b, y: b.y - 1 })).filter(b => b.y > -20));
+        }, 50);
+
+        return () => clearInterval(moveInterval);
+    }, []);
+
+    const popBubble = (id: number) => {
+        setBubbles(prev => prev.filter(b => b.id !== id));
+        setScore(s => s + 1);
+    };
+
+    return (
+        <div className="relative w-full h-80 bg-primary/5 rounded-lg overflow-hidden border">
+            <AnimatePresence>
+                {bubbles.map(bubble => (
+                    <motion.div
+                        key={bubble.id}
+                        initial={{ y: 100, opacity: 1 }}
+                        animate={{ y: bubble.y + '%' }}
+                        exit={{ scale: 1.5, opacity: 0 }}
+                        transition={{ duration: 0.5, ease: 'easeOut' }}
+                        className="absolute rounded-full bg-primary/20 border border-primary/50 cursor-pointer"
+                        style={{
+                            left: `${bubble.x}%`,
+                            top: `${bubble.y}%`,
+                            width: bubble.size,
+                            height: bubble.size,
+                        }}
+                        onClick={() => popBubble(bubble.id)}
+                    />
+                ))}
+            </AnimatePresence>
+             <div className="absolute top-4 right-4 text-primary font-bold bg-background/80 px-3 py-1 rounded-md">Score: {score}</div>
+             <div className="absolute bottom-4 left-4 text-muted-foreground text-sm">A simple game to calm your mind.</div>
+        </div>
+    );
+};
+
+
+// Feature Cards Component
+const features = [
+    {
+        icon: BrainCircuit,
+        title: "Personalized AI Coach",
+        description: "Aya learns from your mood and goals to provide adaptive recommendations and organize your day for success.",
+        color: "from-blue-500 to-cyan-400"
+    },
+    {
+        icon: BookHeart,
+        title: "AI-Guided Journaling",
+        description: "Share a short worry or a long reflection. Get a supportive, therapeutic perspective whenever you need it.",
+        color: "from-purple-500 to-pink-400"
+    },
+    {
+        icon: BarChart,
+        title: "Holistic Tracking",
+        description: "Connect your mood, journaling, and goals to see the patterns that affect your well-being.",
+        color: "from-green-500 to-teal-400"
+    },
+    {
+        icon: Users,
+        title: "Local Resources",
+        description: "Connect with verified mental health services and support groups in your local community.",
+        color: "from-yellow-500 to-orange-400"
+    },
+];
+
+const InteractiveFeatureCards = () => {
+    const [activeIndex, setActiveIndex] = useState(0);
+
+    const handleCardClick = (index: number) => {
+        setActiveIndex(index);
+    };
+
+    return (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+            <div className="relative h-96">
+                {features.map((feature, index) => {
+                    const isActive = index === activeIndex;
+                    return (
+                        <motion.div
+                            key={feature.title}
+                            className={cn(
+                                "absolute w-full h-full p-8 rounded-2xl text-white flex flex-col justify-end cursor-pointer shadow-2xl",
+                                "transform-gpu transition-all duration-500 ease-in-out"
+                            )}
+                            initial={{ y: 0, scale: 0.8, opacity: 0 }}
+                            animate={{
+                                y: isActive ? 0 : (index - activeIndex) * -10,
+                                scale: isActive ? 1 : 1 - (Math.abs(index - activeIndex) * 0.1),
+                                zIndex: features.length - Math.abs(index - activeIndex),
+                                opacity: isActive ? 1 : 1 - (Math.abs(index - activeIndex) * 0.3)
+                            }}
+                            onClick={() => handleCardClick(index)}
+                            style={{ background: `linear-gradient(45deg, ${feature.color.split(' ')[0]} 0%, ${feature.color.split(' ')[2]} 100%)` }}
+                        >
+                            <feature.icon className="w-10 h-10 mb-4" />
+                            <h3 className="text-2xl font-bold">{feature.title}</h3>
+                            <p className="opacity-80 mt-2">{feature.description}</p>
+                        </motion.div>
+                    );
+                })}
+            </div>
+            <div className="flex flex-col gap-4">
+                {features.map((feature, index) => (
+                    <Button
+                        key={feature.title}
+                        variant={activeIndex === index ? 'secondary' : 'ghost'}
+                        onClick={() => handleCardClick(index)}
+                        className="justify-start p-6 text-left h-auto"
+                    >
+                        <feature.icon className="w-6 h-6 mr-4 text-primary" />
+                        <div>
+                            <p className="font-bold text-base">{feature.title}</p>
+                            <p className="text-sm text-muted-foreground">Click to learn more</p>
+                        </div>
+                    </Button>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 
 export default function LandingPage() {
   const router = useRouter();
@@ -43,13 +193,17 @@ export default function LandingPage() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="py-20 md:py-32 text-center container mx-auto px-4 sm:px-6 lg:px-8">
+        <section className="relative py-20 md:py-32 text-center container mx-auto px-4 sm:px-6 lg:px-8 overflow-hidden">
+            <div className="absolute inset-0 -z-10">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/30 rounded-full filter blur-3xl opacity-50 animate-pulse"></div>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/4 -translate-y-1/4 w-80 h-80 bg-secondary/30 rounded-full filter blur-3xl opacity-50 animation-delay-2000 animate-pulse"></div>
+            </div>
             <div className="max-w-4xl mx-auto">
                 <h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight">
-                Be kind to your mind.
+                    Be kind to your mind.
                 </h2>
                 <p className="mt-6 text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto">
-                Realme is your personal AI wellness coach. Get personalized support, track your progress, and build healthier habits for a happier you.
+                    Realme is your personal AI wellness coach. Get personalized support, track your progress, and build healthier habits for a happier you.
                 </p>
                 <div className="mt-8">
                     <Button size="lg" onClick={() => router.push('/signup')}>
@@ -57,84 +211,41 @@ export default function LandingPage() {
                     </Button>
                 </div>
             </div>
-        </section>
-
-        {/* Social Proof */}
-        <section className="py-12 bg-secondary/30">
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                <p className="text-center text-sm font-bold text-muted-foreground tracking-wider uppercase">
-                Featured In
-                </p>
-                <div className="mt-6 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 items-center text-muted-foreground">
-                    <div className="flex justify-center"><Sparkles className="h-8 w-8"/> TechCabal</div>
-                    <div className="flex justify-center"><Sparkles className="h-8 w-8"/> The Guardian</div>
-                    <div className="flex justify-center"><Sparkles className="h-8 w-8"/> BellaNaija</div>
-                    <div className="flex justify-center"><Sparkles className="h-8 w-8"/> TechCrunch</div>
-                    <div className="flex justify-center col-span-2 lg:col-span-1"><Sparkles className="h-8 w-8"/> Forbes</div>
-                </div>
-            </div>
+             <div className="absolute bottom-0 left-0 right-0 h-32" style={{
+                background: 'linear-gradient(to top, hsl(var(--background)), transparent)'
+            }}></div>
         </section>
 
         {/* Features Section */}
         <section id="features" className="py-20 md:py-28">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center max-w-3xl mx-auto">
-                    <h2 className="text-3xl md:text-4xl font-bold">A holistic approach to your well-being</h2>
+                    <h2 className="text-3xl md:text-4xl font-bold">A toolkit for a healthier mind</h2>
                     <p className="mt-4 text-lg text-muted-foreground">
-                        Everything you need to build mental resilience, track your progress, and feel your best.
+                        Everything you need to build mental resilience, track your progress, and feel your best, all in one place.
                     </p>
                 </div>
-                <div className="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-                    <FeatureCard
-                        icon={BrainCircuit}
-                        title="Personalized AI Coach"
-                        description="Our AI learns from your mood, goals, and habits to provide real-time, adaptive recommendations."
-                    />
-                    <FeatureCard
-                        icon={BarChart}
-                        title="Holistic Tracking"
-                        description="Connect your mood, journaling, and goals to see the patterns that affect your well-being."
-                    />
-                    <FeatureCard
-                        icon={BookHeart}
-                        title="Mental Wellness Tools"
-                        description="Access AI-guided journaling, meditations, and CBT exercises whenever you need them."
-                    />
-                    <FeatureCard
-                        icon={ShieldCheck}
-                        title="Private & Secure"
-                        description="Your data is yours. All personal insights are kept secure and anonymous. Always."
-                    />
-                    <FeatureCard
-                        icon={Sun}
-                        title="Build Healthy Habits"
-                        description="Set small goals, track your streaks, and get gentle nudges to stay motivated on your journey."
-                    />
-                    <FeatureCard
-                        icon={Users}
-                        title="Local Resources"
-                        description="Connect with verified mental health services and support groups in your local community."
-                    />
+                <div className="mt-16">
+                    <InteractiveFeatureCards />
                 </div>
             </div>
         </section>
 
-        {/* How It Works Section */}
+        {/* Game Section */}
         <section className="py-20 md:py-28 bg-secondary/30">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center max-w-3xl mx-auto">
-                    <h2 className="text-3xl md:text-4xl font-bold">Your journey starts here</h2>
+                     <h2 className="text-3xl md:text-4xl font-bold">Take a Mindful Moment</h2>
                     <p className="mt-4 text-lg text-muted-foreground">
-                        In just a few simple steps, you can start building a stronger, healthier mind.
+                        Feeling overwhelmed? Take a short break with a simple, calming game to reset your focus.
                     </p>
                 </div>
-                <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-                    <StepCard number="1" title="Take Your Assessment" description="Start with a quick, private chat with our AI to personalize your experience."/>
-                    <StepCard number="2" title="Get Your Plan" description="Receive your first set of goals and content tailored just for you."/>
-                    <StepCard number="3" title="Track & Grow" description="Log your mood, journal your thoughts, and watch your progress over time."/>
+                 <div className="mt-16 max-w-4xl mx-auto">
+                    <BubblePopGame />
                 </div>
             </div>
         </section>
+
 
         {/* Testimonials */}
         <section className="py-20 md:py-28">
@@ -146,17 +257,17 @@ export default function LandingPage() {
               <TestimonialCard
                 text="Realme has completely changed how I approach my mental health. The AI journal prompts are surprisingly insightful."
                 name="Tolu A."
-                avatarHint="woman portrait"
+                icon={Rabbit}
               />
               <TestimonialCard
                 text="Finally, an app that understands the Nigerian context. The local resource guide is a lifesaver."
                 name="Chidi O."
-                avatarHint="man portrait"
+                icon={Cat}
               />
               <TestimonialCard
                 text="I love watching my mood chart improve. It's so motivating to see my progress visually. The gamification keeps me coming back."
                 name="Fatima B."
-                avatarHint="female portrait"
+                icon={Bird}
               />
             </div>
           </div>
@@ -186,36 +297,16 @@ export default function LandingPage() {
   );
 }
 
-const FeatureCard = ({ icon: Icon, title, description }: { icon: React.ElementType, title: string, description: string }) => (
-    <div className="text-center">
-        <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-primary/10 text-primary">
-            <Icon className="h-6 w-6" />
-        </div>
-        <h3 className="mt-6 text-xl font-bold">{title}</h3>
-        <p className="mt-2 text-muted-foreground">
-            {description}
-        </p>
-    </div>
-);
 
-const StepCard = ({number, title, description}: {number: string, title: string, description: string}) => (
-    <div className="p-6">
-        <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary text-primary-foreground text-2xl font-bold mx-auto">
-            {number}
-        </div>
-        <h3 className="mt-6 text-xl font-bold">{title}</h3>
-        <p className="mt-2 text-muted-foreground">{description}</p>
-    </div>
-);
-
-const TestimonialCard = ({ text, name, avatarHint }: { text: string, name: string, avatarHint: string }) => (
+const TestimonialCard = ({ text, name, icon: Icon }: { text: string, name: string, icon: React.ElementType }) => (
   <Card className="bg-secondary/30 border-0">
     <CardContent className="p-8">
       <p className="text-muted-foreground">"{text}"</p>
       <div className="flex items-center gap-4 mt-6">
         <Avatar>
-          <AvatarImage src={`https://placehold.co/100x100.png`} data-ai-hint={avatarHint} alt={name}/>
-          <AvatarFallback>{name.charAt(0)}</AvatarFallback>
+            <AvatarFallback className="bg-primary/10">
+                <Icon className="h-6 w-6 text-primary" />
+            </AvatarFallback>
         </Avatar>
         <div>
           <p className="font-semibold">{name}</p>
@@ -224,3 +315,5 @@ const TestimonialCard = ({ text, name, avatarHint }: { text: string, name: strin
     </CardContent>
   </Card>
 );
+
+    
