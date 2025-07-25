@@ -243,34 +243,39 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
 
   const signup = async (name: string, email: string, password: string, isLeader = false, organizationCode?: string): Promise<FirebaseUser> => {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const avatarUrl = isLeader ? null : getRandomAvatar();
-    await updateProfile(userCredential.user, {
-      displayName: name,
-      photoURL: avatarUrl,
-    });
-    
-    const userDataToSet: Partial<UserData> & { isLeader: boolean } = {
-        ...initialData,
-        isLeader
-    };
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const avatarUrl = isLeader ? null : getRandomAvatar();
+        await updateProfile(userCredential.user, {
+        displayName: name,
+        photoURL: avatarUrl,
+        });
+        
+        const userDataToSet: Partial<UserData> & { isLeader: boolean } = {
+            ...initialData,
+            isLeader
+        };
 
-    if (!isLeader && organizationCode) {
-        const orgQuery = query(collection(db, 'organizations'), where('__name__', '==', organizationCode));
-        const orgSnapshot = await getDocs(orgQuery);
-        if (!orgSnapshot.empty) {
-            userDataToSet.organizationId = organizationCode;
-        } else {
-            console.warn("Invalid organization code provided during signup.");
-            // Optionally, you could throw an error here to notify the user on the client-side.
+        if (!isLeader && organizationCode) {
+            const orgQuery = query(collection(db, 'organizations'), where('__name__', '==', organizationCode));
+            const orgSnapshot = await getDocs(orgQuery);
+            if (!orgSnapshot.empty) {
+                userDataToSet.organizationId = organizationCode;
+            } else {
+                console.warn("Invalid organization code provided during signup.");
+                // Optionally, you could throw an error here to notify the user on the client-side.
+            }
         }
+        
+        // Create the user document in Firestore
+        const userDocRef = doc(db, 'users', userCredential.user.uid);
+        await setDoc(userDocRef, userDataToSet);
+        
+        return userCredential.user;
+    } catch(error) {
+        console.error("Signup failed in context:", error);
+        throw error; // re-throw the error to be caught by the form's handler
     }
-    
-    // Create the user document in Firestore
-    const userDocRef = doc(db, 'users', userCredential.user.uid);
-    await setDoc(userDocRef, userDataToSet);
-    
-    return userCredential.user;
   };
 
   const login = async (email: string, password: string): Promise<FirebaseUser> => {
