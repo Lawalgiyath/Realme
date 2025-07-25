@@ -24,8 +24,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast"
 import { useApp } from "@/context/app-context"
 import { Briefcase, Loader2 } from "lucide-react"
-import { collection, addDoc, serverTimestamp, doc, setDoc } from "firebase/firestore"
-import { db } from "@/lib/firebase"
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -189,5 +187,3 @@ export default function OrganizationSignupForm() {
     </Card>
   )
 }
-
-    

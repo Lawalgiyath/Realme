@@ -242,48 +242,52 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [user, userData.interactions, updateUserData]);
 
 
- const signup = async (name: string, email: string, password: string, isLeader = false, organizationCode?: string, organizationName?: string): Promise<FirebaseUser> => {
+  const signup = async (name: string, email: string, password: string, isLeader = false, organizationCode?: string, organizationName?: string): Promise<FirebaseUser> => {
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const { user: firebaseUser } = userCredential;
+
         const avatarUrl = isLeader ? null : getRandomAvatar();
-        await updateProfile(userCredential.user, {
+        await updateProfile(firebaseUser, {
             displayName: name,
             photoURL: avatarUrl,
         });
 
-        const userDocRef = doc(db, 'users', userCredential.user.uid);
-        const userDataToSet: Partial<UserData> & { isLeader: boolean } = {
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
+        
+        const userDataToSet: Partial<UserData> & { name: string; email: string, isLeader: boolean } = {
             ...initialData,
+            name: name,
+            email: email,
             isLeader
         };
 
         if (isLeader && organizationName) {
-            // Create organization document
-            const orgsRef = collection(db, 'organizations');
-            const orgDoc = await addDoc(orgsRef, {
+            // Step 1: Create the organization document and get its ID.
+            const orgRef = await addDoc(collection(db, 'organizations'), {
                 name: organizationName,
-                leaderUid: userCredential.user.uid,
+                leaderUid: firebaseUser.uid,
                 leaderName: name,
                 createdAt: serverTimestamp()
             });
-            // Add orgId to the leader's user document
-            userDataToSet.organizationId = orgDoc.id;
+            // Step 2: Add the new organization ID to the leader's user document.
+            userDataToSet.organizationId = orgRef.id;
         } else if (!isLeader && organizationCode) {
-            // Verify organization code for regular user
-            const orgQuery = query(collection(db, 'organizations'), where('__name__', '==', organizationCode));
-            const orgSnapshot = await getDocs(orgQuery);
-            if (!orgSnapshot.empty) {
+            // Step 1: Verify the organization code exists.
+            const orgDocRef = doc(db, 'organizations', organizationCode);
+            const orgDocSnap = await getDoc(orgDocRef);
+            if (orgDocSnap.exists()) {
+                // Step 2: If it exists, add the org ID to the user's document.
                 userDataToSet.organizationId = organizationCode;
             } else {
                 console.warn("Invalid organization code provided during signup.");
-                // Optionally, you could throw an error here to notify the user on the client-side.
             }
         }
         
-        // Create the user document in Firestore with all collected data
+        // Step 3: Create the user document in Firestore with all collected data.
         await setDoc(userDocRef, userDataToSet);
         
-        return userCredential.user;
+        return firebaseUser;
     } catch(error) {
         console.error("Signup failed in context:", error);
         throw error; // re-throw the error to be caught by the form's handler
@@ -305,7 +309,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         // First time Google sign-in
         const avatarUrl = getRandomAvatar();
         await updateProfile(userCredential.user, { photoURL: avatarUrl });
-        await setDoc(userDocRef, initialData);
+        await setDoc(userDocRef, {
+            ...initialData,
+            name: userCredential.user.displayName,
+            email: userCredential.user.email
+        });
       }
       return userCredential.user;
   }
@@ -371,6 +379,3 @@ export const useApp = () => {
   }
   return context;
 };
-
-    
-    
