@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -14,29 +14,20 @@ import { Button } from './ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from './ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { vetStory } from '@/ai/flows/story-vetting-flow';
+import { db } from '@/lib/firebase';
+import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } from 'firebase/firestore';
 
 const dailyQuote = {
     quote: "The best way to predict the future is to create it.",
     author: "Peter Drucker"
 };
 
-const initialSuccessStories = [
-    {
-        name: "Tunde",
-        story: "I used to feel overwhelmed every morning. Using the daily planner helped me break down my tasks and feel in control. It’s a small change, but it made a huge difference.",
-        avatarHint: "man portrait happy"
-    },
-    {
-        name: "Aisha",
-        story: "The Worry Jar felt silly at first, but reframing my anxious thoughts has become a powerful habit. Seeing them written down makes them less scary.",
-        avatarHint: "woman portrait smiling"
-    },
-    {
-        name: "Chiamaka",
-        story: "Tracking my mood seemed simple, but seeing the chart after two weeks showed me a real pattern. It helped me connect my sleep to my mood and make positive changes.",
-        avatarHint: "female portrait content"
-    }
-];
+interface SuccessStory {
+    name: string;
+    story: string;
+    avatarHint: string;
+    timestamp?: any;
+}
 
 const storySchema = z.object({
   story: z.string().min(50, "Please share a bit more of your story (at least 50 characters).").max(500, "Your story is a bit long, please keep it under 500 characters."),
@@ -47,8 +38,34 @@ type StoryFormValues = z.infer<typeof storySchema>;
 export default function BeInspired() {
     const { user } = useApp();
     const { toast } = useToast();
-    const [stories, setStories] = useState(initialSuccessStories);
+    const [stories, setStories] = useState<SuccessStory[]>([]);
     const [loading, setLoading] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+
+    useEffect(() => {
+        setLoading(true);
+        const storiesRef = collection(db, 'community-stories');
+        const q = query(storiesRef, orderBy('timestamp', 'desc'));
+
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const fetchedStories: SuccessStory[] = [];
+            querySnapshot.forEach((doc) => {
+                fetchedStories.push(doc.data() as SuccessStory);
+            });
+            setStories(fetchedStories);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching stories:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Oh no!',
+                description: 'Could not load community stories.'
+            });
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [toast]);
 
     const form = useForm<StoryFormValues>({
         resolver: zodResolver(storySchema),
@@ -58,16 +75,28 @@ export default function BeInspired() {
     });
 
     const onSubmit = async (data: StoryFormValues) => {
-        setLoading(true);
+        if (!user || user.isAnonymous) {
+            toast({
+                variant: 'destructive',
+                title: 'Please sign up',
+                description: 'You need an account to share a story.'
+            });
+            return;
+        }
+
+        setSubmitting(true);
         try {
             const result = await vetStory({ story: data.story });
 
             if (result.isApproved) {
-                setStories(prev => [{
-                    name: user?.name.split(' ')[0] || "Community Member",
+                const storiesRef = collection(db, 'community-stories');
+                await addDoc(storiesRef, {
+                    name: user?.name?.split(' ')[0] || "Community Member",
                     story: data.story,
-                    avatarHint: "person smiling"
-                }, ...prev]);
+                    avatarHint: user.avatar ? "" : "person smiling",
+                    avatar: user.avatar,
+                    timestamp: serverTimestamp()
+                });
 
                 toast({
                     title: "Thank You for Sharing!",
@@ -89,7 +118,7 @@ export default function BeInspired() {
                 description: 'Could not submit your story. Please try again.',
             });
         } finally {
-            setLoading(false);
+            setSubmitting(false);
         }
     }
     
@@ -128,18 +157,26 @@ export default function BeInspired() {
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    {stories.map((story, index) => (
-                        <div key={index} className="p-4 rounded-lg bg-secondary/50 flex items-start gap-4">
-                             <Avatar>
-                                <AvatarImage src={`https://placehold.co/100x100.png`} data-ai-hint={story.avatarHint} alt={story.name}/>
-                                <AvatarFallback>{story.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                                <p className="text-muted-foreground leading-relaxed">"{story.story}"</p>
-                                <p className="font-semibold mt-2 text-sm text-right w-full">- {story.name}</p>
+                    {loading ? (
+                         <div className="flex justify-center items-center py-10">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                         </div>
+                    ) : stories.length === 0 ? (
+                        <p className="text-muted-foreground text-center py-10">Be the first to share a story!</p>
+                    ) : (
+                        stories.map((story, index) => (
+                            <div key={index} className="p-4 rounded-lg bg-secondary/50 flex items-start gap-4">
+                                <Avatar>
+                                    <AvatarImage src={`https://placehold.co/100x100.png`} data-ai-hint={story.avatarHint} alt={story.name}/>
+                                    <AvatarFallback>{story.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <p className="text-muted-foreground leading-relaxed">"{story.story}"</p>
+                                    <p className="font-semibold mt-2 text-sm text-right w-full">- {story.name}</p>
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        ))
+                    )}
                 </CardContent>
             </Card>
             
@@ -176,9 +213,9 @@ export default function BeInspired() {
                                 )}
                             />
                             <div className="flex justify-end">
-                                <Button type="submit" disabled={loading}>
-                                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                                    {loading ? "Submitting..." : "Share My Story"}
+                                <Button type="submit" disabled={submitting}>
+                                    {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                                    {submitting ? "Submitting..." : "Share My Story"}
                                 </Button>
                             </div>
                         </form>
@@ -188,5 +225,3 @@ export default function BeInspired() {
         </div>
     )
 }
-
-    
