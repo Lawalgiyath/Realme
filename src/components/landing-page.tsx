@@ -1,6 +1,6 @@
 
 "use client";
-import { HeartPulse, Rocket, Sparkles, BrainCircuit, BarChart, Users, BookHeart, ShieldCheck, Sun, Moon, ArrowRight, MousePointerClick, Gamepad2, Rabbit, Cat, Dog, Bird } from 'lucide-react';
+import { HeartPulse, Rocket, Sparkles, BrainCircuit, BarChart, Users, BookHeart, ShieldCheck, Sun, Moon, ArrowRight, MousePointerClick, Gamepad2, Rabbit, Cat, Dog, Bird, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/app-context';
@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 
 // Bubble Pop Game Component
 const BubblePopGame = () => {
@@ -186,8 +187,33 @@ export default function LandingPage() {
             <h1 className="text-2xl font-bold font-headline">Realme</h1>
         </div>
         <nav className="flex items-center gap-2">
-          <Button variant="ghost" onClick={() => router.push('/login')}>Log In</Button>
-          <Button onClick={() => router.push('/signup')}>Get Started</Button>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost">Log In <ChevronDown className="ml-2 h-4 w-4" /></Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => router.push('/login')}>
+                        For Individuals
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => router.push('/organization/login')}>
+                        For Organizations
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button>Get Started <ChevronDown className="ml-2 h-4 w-4" /></Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => router.push('/signup')}>
+                        For Individuals
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => router.push('/organization/signup')}>
+                        For Organizations
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
         </nav>
       </header>
 
@@ -205,9 +231,12 @@ export default function LandingPage() {
                 <p className="mt-6 text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto">
                     Realme is your personal AI wellness coach. Get personalized support, track your progress, and build healthier habits for a happier you.
                 </p>
-                <div className="mt-8">
+                <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
                     <Button size="lg" onClick={() => router.push('/signup')}>
-                    Start Your Journey <ArrowRight className="ml-2" />
+                        Start as an Individual <ArrowRight className="ml-2" />
+                    </Button>
+                    <Button size="lg" variant="outline" onClick={() => router.push('/organization/signup')}>
+                        Register an Organization
                     </Button>
                 </div>
             </div>
@@ -280,9 +309,12 @@ export default function LandingPage() {
                 <p className="mt-4 text-lg text-primary-foreground/80 max-w-2xl mx-auto">
                     Join thousands of others on the path to mental wellness. Your first step is just a click away.
                 </p>
-                <div className="mt-8">
+                <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
                     <Button size="lg" variant="secondary" onClick={() => router.push('/signup')}>
-                    Get Started For Free
+                    Sign Up as an Individual
+                    </Button>
+                     <Button size="lg" variant="outline" className="bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10" onClick={() => router.push('/organization/signup')}>
+                        Register an Organization
                     </Button>
                 </div>
             </div>
@@ -315,5 +347,3 @@ const TestimonialCard = ({ text, name, icon: Icon }: { text: string, name: strin
     </CardContent>
   </Card>
 );
-
-    
