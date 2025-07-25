@@ -250,11 +250,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       photoURL: avatarUrl,
     });
     
-    const userDataToSet: Partial<UserData> = {
+    const userDataToSet: Partial<UserData> & { isLeader: boolean } = {
+        ...initialData,
         isLeader
     };
 
-    if (organizationCode) {
+    if (!isLeader && organizationCode) {
         const orgQuery = query(collection(db, 'organizations'), where('__name__', '==', organizationCode));
         const orgSnapshot = await getDocs(orgQuery);
         if (!orgSnapshot.empty) {
@@ -267,7 +268,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     
     // Create the user document in Firestore
     const userDocRef = doc(db, 'users', userCredential.user.uid);
-    await setDoc(userDocRef, {...initialData, ...userDataToSet});
+    await setDoc(userDocRef, userDataToSet);
     
     return userCredential.user;
   };

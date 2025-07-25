@@ -23,7 +23,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast"
 import { useApp } from "@/context/app-context"
 import { Briefcase, Loader2 } from "lucide-react"
-import { collection, addDoc, serverTimestamp } from "firebase/firestore"
+import { collection, addDoc, serverTimestamp, doc, setDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 
 const formSchema = z.object({
@@ -62,6 +62,8 @@ export default function OrganizationSignupForm() {
     try {
         const userCredential = await signup(values.name, values.email, values.password, true);
         
+        const userDocRef = doc(db, 'users', userCredential.uid);
+
         // Create organization document
         const orgsRef = collection(db, 'organizations');
         const orgDoc = await addDoc(orgsRef, {
@@ -72,9 +74,8 @@ export default function OrganizationSignupForm() {
         });
 
         // Add orgId to the leader's user document
-        await db.collection('users').doc(userCredential.uid).set({
+        await setDoc(userDocRef, {
             organizationId: orgDoc.id,
-            isLeader: true
         }, { merge: true });
 
         toast({
