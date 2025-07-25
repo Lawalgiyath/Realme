@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Sparkles, Heart, Send, Loader2, Star, Sun, Wind, Leaf } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { Avatar, AvatarFallback } from "./ui/avatar";
 import { useApp } from '@/context/app-context';
 import { Textarea } from './ui/textarea';
 import { Button } from './ui/button';
@@ -17,10 +17,19 @@ import { vetStory } from '@/ai/flows/story-vetting-flow';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } from 'firebase/firestore';
 
-const dailyQuote = {
-    quote: "The best way to predict the future is to create it.",
-    author: "Peter Drucker"
-};
+const allQuotes = [
+    { quote: "The best way to predict the future is to create it.", author: "Peter Drucker" },
+    { quote: "The greatest glory in living lies not in never falling, but in rising every time we fall.", author: "Nelson Mandela" },
+    { quote: "Your present circumstances don't determine where you can go; they merely determine where you start.", author: "Nido Qubein" },
+    { quote: "The only journey is the one within.", author: "Rainer Maria Rilke" },
+    { quote: "What mental health needs is more sunlight, more candor, and more unashamed conversation.", author: "Glenn Close" },
+    { quote: "You are not your illness. You have an individual story to tell.", author: "Julian Seifter" },
+    { quote: "It’s not until you’re broken that you find your sharpest edge.", author: "T.D. Jakes" },
+    { quote: "The only way out of the labyrinth of suffering is to forgive.", author: "John Green, The Fault in Our Stars" },
+    { quote: "Just because no one else can heal or do your inner work for you doesn’t mean you can, should, or need to do it alone.", author: "Lisa Olivera" },
+    { quote: "What we achieve inwardly will change outer reality.", author: "Plutarch" }
+];
+
 
 interface SuccessStory {
     name: string;
@@ -43,6 +52,18 @@ export default function BeInspired() {
     const [stories, setStories] = useState<SuccessStory[]>([]);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [dailyQuote, setDailyQuote] = useState({ quote: '', author: '' });
+
+    useEffect(() => {
+        const getDayOfYear = (date: Date) => {
+            const start = new Date(date.getFullYear(), 0, 0);
+            const diff = (date.getTime() - start.getTime()) + ((start.getTimezoneOffset() - date.getTimezoneOffset()) * 60 * 1000);
+            const oneDay = 1000 * 60 * 60 * 24;
+            return Math.floor(diff / oneDay);
+        };
+        const dayIndex = getDayOfYear(new Date());
+        setDailyQuote(allQuotes[dayIndex % allQuotes.length]);
+    }, []);
 
     useEffect(() => {
         setLoading(true);
