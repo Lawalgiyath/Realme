@@ -109,8 +109,6 @@ export function SignupForm() {
                 description = "The password is too weak. Please use a stronger password.";
                 break;
              case 'auth/popup-closed-by-user':
-                description = "The sign-in window was closed before completing. Please try again.";
-                break;
              case 'auth/cancelled-popup-request':
                  return; // Do not show toast for this
             default:

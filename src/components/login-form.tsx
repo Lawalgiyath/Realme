@@ -123,10 +123,8 @@ export function LoginForm() {
                 description = "The email address is not valid.";
                 break;
             case 'auth/popup-closed-by-user':
-                description = "The sign-in window was closed before completing. Please try again.";
-                break;
             case 'auth/cancelled-popup-request':
-                 return; // Do not show toast for this
+                 return; // Do not show toast for this, user cancelled intentionally
             default:
                 description = "Could not sign you in. Please try again."
         }
