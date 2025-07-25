@@ -19,7 +19,7 @@ const ReframeWorryInputSchema = z.object({
 export type ReframeWorryInput = z.infer<typeof ReframeWorryInputSchema>;
 
 const ReframeWorryOutputSchema = z.object({
-  reframedThought: z.string().describe('A short, calming, and constructive reframing of the user\'s worry. It should be gentle and supportive, under 40 words.'),
+  reframedThought: z.string().describe('A multi-sentence, reassuring, and constructive reframing of the user\'s worry. It should validate their feeling, offer a perspective shift, and suggest a micro-action.'),
 });
 export type ReframeWorryOutput = z.infer<typeof ReframeWorryOutputSchema>;
 
@@ -33,11 +33,16 @@ const prompt = ai.definePrompt({
   name: 'worryJarPrompt',
   input: {schema: ReframeWorryInputSchema},
   output: {schema: ReframeWorryOutputSchema},
-  prompt: `You are a gentle and wise mindfulness coach. A user has shared a worry with you. Your task is to provide a single, short, calming, and constructive thought to help them reframe their worry. Be empathetic and encouraging. Keep the response under 40 words.
+  prompt: `You are an empathetic AI companion trained in Cognitive Behavioral Therapy (CBT) and Acceptance and Commitment Therapy (ACT). A user has shared a worry. Your task is to provide a reassuring and constructive response in 3-4 sentences.
+
+Your response MUST follow this structure:
+1.  **Validate the feeling:** Start by acknowledging the difficulty of the emotion (e.g., "That sounds incredibly stressful," or "It's understandable to feel anxious about that.").
+2.  **Offer a gentle perspective shift:** Reframe the thought without invalidating it. Focus on what the user can control or view differently (e.g., "Instead of seeing it as a potential failure, could we see it as an opportunity to learn?" or "While the future is uncertain, what is one thing that is true and in your control right now?").
+3.  **Suggest a concrete micro-action:** Propose one small, immediate, and manageable action the user can take to ground themselves or regain a sense of agency (e.g., "Try taking three slow, deep breaths, focusing only on the air moving in and out." or "Can you write down one small part of this that you *can* influence?").
 
 User's worry: "{{{worry}}}"
 
-Your reframed thought:`,
+Provide your response in the specified output format.`,
 });
 
 const worryJarFlow = ai.defineFlow(
