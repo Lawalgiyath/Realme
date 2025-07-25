@@ -247,50 +247,62 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const { user: firebaseUser } = userCredential;
 
-        const avatarUrl = isLeader ? null : getRandomAvatar();
-        await updateProfile(firebaseUser, {
-            displayName: name,
-            photoURL: avatarUrl,
-        });
+        if (isLeader) {
+            // Logic for Organization Leader
+            if (!organizationName) throw new Error("Organization name is required for leaders.");
+            
+            await updateProfile(firebaseUser, { displayName: name });
 
-        const userDocRef = doc(db, 'users', firebaseUser.uid);
-        
-        const userDataToSet: Partial<UserData> & { name: string; email: string, isLeader: boolean } = {
-            ...initialData,
-            name: name,
-            email: email,
-            isLeader
-        };
-
-        if (isLeader && organizationName) {
-            // Step 1: Create the organization document and get its ID.
+            // 1. Create the organization document to get its ID.
             const orgRef = await addDoc(collection(db, 'organizations'), {
                 name: organizationName,
                 leaderUid: firebaseUser.uid,
                 leaderName: name,
                 createdAt: serverTimestamp()
             });
-            // Step 2: Add the new organization ID to the leader's user document.
-            userDataToSet.organizationId = orgRef.id;
-        } else if (!isLeader && organizationCode) {
-            // Step 1: Verify the organization code exists.
-            const orgDocRef = doc(db, 'organizations', organizationCode);
-            const orgDocSnap = await getDoc(orgDocRef);
-            if (orgDocSnap.exists()) {
-                // Step 2: If it exists, add the org ID to the user's document.
-                userDataToSet.organizationId = organizationCode;
-            } else {
-                console.warn("Invalid organization code provided during signup.");
+
+            // 2. Create the leader's user document with the new organization ID.
+            const userDocRef = doc(db, 'users', firebaseUser.uid);
+            await setDoc(userDocRef, {
+                ...initialData,
+                name: name,
+                email: email,
+                isLeader: true,
+                organizationId: orgRef.id, // Use the new organization's ID
+            });
+        } else {
+            // Logic for regular user
+            const avatarUrl = getRandomAvatar();
+            await updateProfile(firebaseUser, {
+                displayName: name,
+                photoURL: avatarUrl,
+            });
+
+            const userDocRef = doc(db, 'users', firebaseUser.uid);
+            const userDataToSet: Partial<UserData> & { name: string; email: string, isLeader: boolean } = {
+                ...initialData,
+                name: name,
+                email: email,
+                isLeader: false,
+            };
+
+            if (organizationCode) {
+                const orgDocRef = doc(db, 'organizations', organizationCode);
+                const orgDocSnap = await getDoc(orgDocRef);
+                if (orgDocSnap.exists()) {
+                    userDataToSet.organizationId = organizationCode;
+                } else {
+                    console.warn("Invalid organization code provided during signup.");
+                }
             }
+
+            await setDoc(userDocRef, userDataToSet);
         }
-        
-        // Step 3: Create the user document in Firestore with all collected data.
-        await setDoc(userDocRef, userDataToSet);
         
         return firebaseUser;
     } catch(error) {
         console.error("Signup failed in context:", error);
-        throw error; // re-throw the error to be caught by the form's handler
+        throw error;
     }
   };
 
@@ -379,3 +391,5 @@ export const useApp = () => {
   }
   return context;
 };
+
+    
