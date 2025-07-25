@@ -19,10 +19,10 @@ export type OrganizationInsightsInput = z.infer<typeof OrganizationInsightsInput
 
 const OrganizationInsightsOutputSchema = z.object({
     overallSentiment: z.string().describe("A 1-2 sentence summary of the organization's overall emotional state. (e.g., 'Sentiment appears to be generally positive, with a notable current of anxiety related to upcoming deadlines.')"),
-    commonThemes: z.string().describe("A bulleted list of 2-4 recurring themes or topics found in members' journal entries and worries. Focus on high-level topics like 'work-life balance', 'stress management', 'interpersonal relationships'."),
-    goalTrends: z.string().describe("A bulleted list of 2-3 common goals members are setting. (e.g., 'Practicing mindfulness', 'Improving sleep quality')."),
+    commonThemes: z.string().describe("A bulleted list of 2-4 recurring themes or topics found in members' journal entries and worries. Focus on high-level topics like 'work-life balance', 'stress management', 'interpersonal relationships'. Respond with each point on a new line, starting with a hyphen."),
+    goalTrends: z.string().describe("A bulleted list of 2-3 common goals members are setting. (e.g., 'Practicing mindfulness', 'Improving sleep quality'). Respond with each point on a new line, starting with a hyphen."),
     positiveHighlights: z.string().describe("Identify any recurring positive themes or achievements. (e.g., 'Members frequently express gratitude for team support.')"),
-    areasForAttention: z.string().describe("A bulleted list of 2-3 potential areas where the organization could offer support, based on the data. This should be framed constructively and suggest general areas, not specific interventions. (e.g., 'Resources for managing stress', 'Encouraging open communication')."),
+    areasForAttention: z.string().describe("A bulleted list of 2-3 potential areas where the organization could offer support, based on the data. This should be framed constructively and suggest general areas, not specific interventions. (e.g., 'Resources for managing stress', 'Encouraging open communication'). Respond with each point on a new line, starting with a hyphen."),
 });
 export type OrganizationInsightsOutput = z.infer<typeof OrganizationInsightsOutputSchema>;
 
@@ -48,10 +48,10 @@ const prompt = ai.definePrompt({
 Based on the provided JSON data, generate a report for the organization's leader. The report should cover the following five areas:
 
 1.  **Overall Sentiment:** Briefly summarize the collective mood. Is it generally positive, negative, mixed? Are there any strong overriding emotions like stress or optimism?
-2.  **Common Themes:** Identify the most frequent topics or concerns appearing in journal entries. Think in broad categories like "workload," "future uncertainty," "personal growth," etc.
-3.  **Goal Trends:** What are the most common types of wellness goals members are setting for themselves?
+2.  **Common Themes:** Identify the most frequent topics or concerns appearing in journal entries. Think in broad categories like "workload," "future uncertainty," "personal growth," etc. For this, provide a bulleted list where each point is on a new line.
+3.  **Goal Trends:** What are the most common types of wellness goals members are setting for themselves? For this, provide a bulleted list where each point is on a new line.
 4.  **Positive Highlights:** Are there any recurring positive notes, expressions of gratitude, or successes that stand out in the data?
-5.  **Areas for Attention:** Based on the analysis, what general areas could the organization focus on to support its members' well-being? Frame these as gentle, constructive suggestions (e.g., "Consider sharing resources on time management," or "Explore ways to foster team connection.").
+5.  **Areas for Attention:** Based on the analysis, what general areas could the organization focus on to support its members' well-being? Frame these as gentle, constructive suggestions (e.g., "Consider sharing resources on time management," or "Explore ways to foster team connection."). For this, provide a bulleted list where each point is on a new line.
 
 Provide the response in the structured output format.`,
 });

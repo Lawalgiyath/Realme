@@ -10,7 +10,8 @@ import {
   Briefcase,
   ClipboardList,
   LineChart,
-  Copy
+  Copy,
+  Users
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,7 @@ import { collection, query, where, getDocs } from "firebase/firestore";
 import { useToast } from '@/hooks/use-toast';
 import { organizationInsights, OrganizationInsightsOutput } from '@/ai/flows/organization-insights-flow';
 import { Loader2 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 
 export default function OrganizationDashboard() {
   const { user, logout, loading: appLoading } = useApp();
@@ -70,16 +72,10 @@ export default function OrganizationDashboard() {
         const usersSnapshot = await getDocs(usersQuery);
         const memberData = usersSnapshot.docs.map(doc => doc.data());
 
-        if (memberData.length < 1) {
-             setInsights({
-                overallSentiment: "No data yet. Waiting for members to join and log their mood.",
-                commonThemes: "No data available.",
-                goalTrends: "No data available.",
-                positiveHighlights: "No data available.",
-                areasForAttention: "No data available.",
-            });
-            setLoading(false);
-            return;
+        if (memberData.length === 0) {
+             setInsights(null); // Set to null instead of placeholder data
+             setLoading(false);
+             return;
         }
 
         try {
@@ -119,7 +115,7 @@ export default function OrganizationDashboard() {
     }
   }
 
-   if (appLoading || loading) {
+   if (appLoading || (!organization && loading)) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -199,13 +195,28 @@ export default function OrganizationDashboard() {
                     </CardContent>
                 </Card>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <InfoCard title="Overall Sentiment" icon={LineChart} content={insights?.overallSentiment} />
-                    <InfoCard title="Common Themes in Worries" icon={ClipboardList} content={insights?.commonThemes} />
-                    <InfoCard title="Trending Goals" icon={ClipboardList} content={insights?.goalTrends} />
-                    <InfoCard title="Positive Highlights" icon={ClipboardList} content={insights?.positiveHighlights} />
-                    <InfoCard title="Areas for Attention" icon={ClipboardList} content={insights?.areasForAttention} />
-                </div>
+                {loading ? (
+                    <div className="flex justify-center items-center py-10">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <p className="ml-4 text-muted-foreground">Aya is analyzing your organization's wellness data...</p>
+                    </div>
+                ) : insights ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <InfoCard title="Overall Sentiment" icon={LineChart} content={insights.overallSentiment} />
+                        <InfoCard title="Common Themes in Worries" icon={ClipboardList} content={insights.commonThemes} />
+                        <InfoCard title="Trending Goals" icon={ClipboardList} content={insights.goalTrends} />
+                        <InfoCard title="Positive Highlights" icon={ClipboardList} content={insights.positiveHighlights} />
+                        <InfoCard title="Areas for Attention" icon={ClipboardList} content={insights.areasForAttention} />
+                    </div>
+                ) : (
+                    <Alert>
+                        <Users className="h-4 w-4" />
+                        <AlertTitle>Waiting for Members</AlertTitle>
+                        <AlertDescription>
+                            Your dashboard is ready. As soon as members join your organization using the code above and start interacting with the app, anonymous wellness insights will appear here.
+                        </AlertDescription>
+                    </Alert>
+                )}
             </div>
       </main>
     </div>
@@ -214,6 +225,9 @@ export default function OrganizationDashboard() {
 
 
 function InfoCard({ title, content, icon: Icon }: { title: string, content?: string, icon: React.ElementType }) {
+    // Split content by newlines and render as a list if it contains bullet points
+    const contentItems = content?.split('\n').filter(item => item.trim().length > 0);
+
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -221,8 +235,18 @@ function InfoCard({ title, content, icon: Icon }: { title: string, content?: str
                 <Icon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-                <div className="text-lg text-foreground">
-                    {content || <span className="text-muted-foreground">No data yet.</span>}
+                <div className="text-base text-foreground">
+                    {!content ? (
+                        <span className="text-muted-foreground">No data yet.</span>
+                    ) : contentItems && contentItems.length > 1 ? (
+                        <ul className="list-disc pl-5 space-y-1">
+                            {contentItems.map((item, index) => (
+                                <li key={index} className="text-sm">{item.replace(/^- /, '')}</li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="text-sm">{content}</p>
+                    )}
                 </div>
             </CardContent>
         </Card>
