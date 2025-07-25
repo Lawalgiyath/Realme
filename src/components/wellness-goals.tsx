@@ -186,10 +186,10 @@ export default function WellnessGoals() {
                             <ul className="space-y-3">
                                 {personalizedContent.meditations.map((meditation, i) => (
                                    <li key={i}>
-                                        <a href={`https://www.youtube.com/results?search_query=guided+meditation+${encodeURIComponent(meditation)}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-2 rounded-md hover:bg-secondary/50 transition-colors">
+                                        <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(meditation.youtubeSearchQuery)}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-2 rounded-md hover:bg-secondary/50 transition-colors">
                                            <div className="p-2 bg-secondary rounded-full"><Wind className="h-4 w-4 text-secondary-foreground" /></div>
                                            <div className='flex-1'>
-                                                <p className="font-medium text-sm">{meditation}</p>
+                                                <p className="font-medium text-sm">{meditation.title}</p>
                                                 <span className="text-xs text-muted-foreground">Listen on YouTube</span>
                                            </div>
                                         </a>
@@ -202,10 +202,10 @@ export default function WellnessGoals() {
                             <ul className="space-y-3">
                                 {personalizedContent.exercises.map((exercise, i) => (
                                     <li key={i}>
-                                        <a href={`https://www.google.com/search?q=${encodeURIComponent(exercise)} exercise`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-2 rounded-md hover:bg-secondary/50 transition-colors">
+                                        <a href={`https://www.google.com/search?q=${encodeURIComponent(exercise.googleSearchQuery)}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-2 rounded-md hover:bg-secondary/50 transition-colors">
                                             <div className="p-2 bg-secondary rounded-full"><BrainCircuit className="h-4 w-4 text-secondary-foreground" /></div>
                                             <div className='flex-1'>
-                                                <p className="font-medium text-sm">{exercise}</p>
+                                                <p className="font-medium text-sm">{exercise.title}</p>
                                                 <span className="text-xs text-muted-foreground">Learn more on Google</span>
                                             </div>
                                         </a>
