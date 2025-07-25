@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
-import { Sparkles, Heart, Send, Loader2 } from "lucide-react";
+import { Sparkles, Heart, Send, Loader2, Star, Sun, Wind, Leaf } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { useApp } from '@/context/app-context';
 import { Textarea } from './ui/textarea';
@@ -34,6 +34,8 @@ const storySchema = z.object({
 });
 
 type StoryFormValues = z.infer<typeof storySchema>;
+
+const storyIcons = [Star, Sun, Wind, Leaf, Heart];
 
 export default function BeInspired() {
     const { user } = useApp();
@@ -164,18 +166,22 @@ export default function BeInspired() {
                     ) : stories.length === 0 ? (
                         <p className="text-muted-foreground text-center py-10">Be the first to share a story!</p>
                     ) : (
-                        stories.map((story, index) => (
-                            <div key={index} className="p-4 rounded-lg bg-secondary/50 flex items-start gap-4">
-                                <Avatar>
-                                    <AvatarImage src={`https://placehold.co/100x100.png`} data-ai-hint={story.avatarHint} alt={story.name}/>
-                                    <AvatarFallback>{story.name.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                    <p className="text-muted-foreground leading-relaxed">"{story.story}"</p>
-                                    <p className="font-semibold mt-2 text-sm text-right w-full">- {story.name}</p>
+                        stories.map((story, index) => {
+                            const Icon = storyIcons[index % storyIcons.length];
+                            return (
+                                <div key={index} className="p-4 rounded-lg bg-secondary/50 flex items-start gap-4">
+                                    <Avatar className="bg-primary/10">
+                                        <AvatarFallback className="bg-transparent">
+                                            <Icon className="h-5 w-5 text-primary" />
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <p className="text-muted-foreground leading-relaxed">"{story.story}"</p>
+                                        <p className="font-semibold mt-2 text-sm text-right w-full">- {story.name}</p>
+                                    </div>
                                 </div>
-                            </div>
-                        ))
+                            )
+                        })
                     )}
                 </CardContent>
             </Card>
