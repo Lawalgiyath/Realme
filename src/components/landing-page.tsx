@@ -118,7 +118,8 @@ const InteractiveFeatureCards = () => {
                             key={feature.title}
                             className={cn(
                                 "absolute w-full h-full p-8 rounded-2xl text-white flex flex-col justify-end cursor-pointer shadow-2xl",
-                                "transform-gpu transition-all duration-500 ease-in-out"
+                                "transform-gpu transition-all duration-500 ease-in-out bg-gradient-to-br",
+                                feature.color
                             )}
                             initial={{ y: 0, scale: 0.8, opacity: 0 }}
                             animate={{
@@ -128,7 +129,6 @@ const InteractiveFeatureCards = () => {
                                 opacity: isActive ? 1 : 1 - (Math.abs(index - activeIndex) * 0.3)
                             }}
                             onClick={() => handleCardClick(index)}
-                            style={{ background: `linear-gradient(45deg, ${feature.color.split(' ')[0]} 0%, ${feature.color.split(' ')[2]} 100%)` }}
                         >
                             <feature.icon className="w-10 h-10 mb-4" />
                             <h3 className="text-2xl font-bold">{feature.title}</h3>
