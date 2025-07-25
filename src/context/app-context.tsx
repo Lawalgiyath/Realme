@@ -6,7 +6,7 @@ import type { MentalHealthAssessmentOutput } from '@/ai/flows/mental-health-asse
 import React, { createContext, useState, useContext, ReactNode, useMemo, useEffect, useCallback } from 'react';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, type User as FirebaseUser, GoogleAuthProvider, signInWithPopup, signInAnonymously } from 'firebase/auth';
-import { doc, setDoc, onSnapshot, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { DailyPlannerOutput } from '@/ai/flows/daily-planner-flow';
 
 export interface Mood {
@@ -75,7 +75,7 @@ interface AppContextType {
   personalizedContent: PersonalizedContentOutput | null;
   setPersonalizedContent: (content: PersonalizedContentOutput | null) => void;
   user: User | null;
-  signup: (name: string, email: string, password: string, isLeader?: boolean, organizationCode?: string) => Promise<FirebaseUser>;
+  signup: (name: string, email: string, password: string, isLeader?: boolean, organizationCode?: string, organizationName?: string) => Promise<FirebaseUser>;
   login: (email: string, password: string) => Promise<FirebaseUser>;
   loginWithGoogle: () => Promise<FirebaseUser>;
   loginAnonymously: () => Promise<FirebaseUser>;
@@ -242,21 +242,34 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [user, userData.interactions, updateUserData]);
 
 
-  const signup = async (name: string, email: string, password: string, isLeader = false, organizationCode?: string): Promise<FirebaseUser> => {
+ const signup = async (name: string, email: string, password: string, isLeader = false, organizationCode?: string, organizationName?: string): Promise<FirebaseUser> => {
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const avatarUrl = isLeader ? null : getRandomAvatar();
         await updateProfile(userCredential.user, {
-        displayName: name,
-        photoURL: avatarUrl,
+            displayName: name,
+            photoURL: avatarUrl,
         });
-        
+
+        const userDocRef = doc(db, 'users', userCredential.user.uid);
         const userDataToSet: Partial<UserData> & { isLeader: boolean } = {
             ...initialData,
             isLeader
         };
 
-        if (!isLeader && organizationCode) {
+        if (isLeader && organizationName) {
+            // Create organization document
+            const orgsRef = collection(db, 'organizations');
+            const orgDoc = await addDoc(orgsRef, {
+                name: organizationName,
+                leaderUid: userCredential.user.uid,
+                leaderName: name,
+                createdAt: serverTimestamp()
+            });
+            // Add orgId to the leader's user document
+            userDataToSet.organizationId = orgDoc.id;
+        } else if (!isLeader && organizationCode) {
+            // Verify organization code for regular user
             const orgQuery = query(collection(db, 'organizations'), where('__name__', '==', organizationCode));
             const orgSnapshot = await getDocs(orgQuery);
             if (!orgSnapshot.empty) {
@@ -267,8 +280,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             }
         }
         
-        // Create the user document in Firestore
-        const userDocRef = doc(db, 'users', userCredential.user.uid);
+        // Create the user document in Firestore with all collected data
         await setDoc(userDocRef, userDataToSet);
         
         return userCredential.user;
@@ -359,3 +371,5 @@ export const useApp = () => {
   }
   return context;
 };
+
+    

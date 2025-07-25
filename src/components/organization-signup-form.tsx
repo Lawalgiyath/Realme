@@ -61,23 +61,7 @@ export default function OrganizationSignupForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
     try {
-        const userCredential = await signup(values.name, values.email, values.password, true);
-        
-        const userDocRef = doc(db, 'users', userCredential.uid);
-
-        // Create organization document
-        const orgsRef = collection(db, 'organizations');
-        const orgDoc = await addDoc(orgsRef, {
-            name: values.organizationName,
-            leaderUid: userCredential.uid,
-            leaderName: values.name,
-            createdAt: serverTimestamp()
-        });
-
-        // Add orgId to the leader's user document
-        await setDoc(userDocRef, {
-            organizationId: orgDoc.id,
-        }, { merge: true });
+        await signup(values.name, values.email, values.password, true, undefined, values.organizationName);
 
         toast({
             title: "Organization Account Created!",
@@ -205,3 +189,5 @@ export default function OrganizationSignupForm() {
     </Card>
   )
 }
+
+    
