@@ -5,7 +5,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Bot, Utensils, Calendar, Loader2, Sparkles, Wand2, Mic, MicOff, Check, Edit } from 'lucide-react';
+import { Bot, Utensils, Calendar, Loader2, Sparkles, Wand2, Mic, MicOff, Check, Edit, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -33,6 +33,8 @@ export default function AiCoach() {
   const [loading, setLoading] = useState(false);
   const [isCorrecting, setIsCorrecting] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [isSpeechSupported, setIsSpeechSupported] = useState(true);
+  
   const recognitionRef = useRef<any>(null);
   const activeFieldRef = useRef<ActiveField>('activities');
   
@@ -117,6 +119,7 @@ export default function AiCoach() {
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
+      setIsSpeechSupported(true);
       recognitionRef.current = new SpeechRecognition();
       recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
@@ -162,10 +165,10 @@ export default function AiCoach() {
       
       recognitionRef.current.onend = () => {
           setIsListening(false);
-          const finalTranscript = finalTranscriptRef.current;
+          const finalTranscript = finalTranscriptRef.current.trim();
           const stoppedField = activeFieldRef.current;
                     
-          if(finalTranscript.trim()){
+          if(finalTranscript){
               handleTextCorrection(stoppedField, finalTranscript);
           }
 
@@ -176,6 +179,8 @@ export default function AiCoach() {
               handleToggleListening('dietaryRestrictions');
           }
       }
+    } else {
+        setIsSpeechSupported(false);
     }
   }, [setValue, toast, getValues, handleTextCorrection, handleToggleListening]);
 
@@ -213,7 +218,7 @@ export default function AiCoach() {
         size="sm"
         onClick={() => handleToggleListening(field)}
         className={cn('absolute right-2 z-10', isTextarea ? 'top-2' : 'top-1/2 -translate-y-1/2', isListening && activeFieldRef.current === field && 'text-destructive')}
-        disabled={isCorrecting}
+        disabled={isCorrecting || !isSpeechSupported}
       >
         {isCorrecting && activeFieldRef.current === field ? <Loader2 className="h-5 w-5 animate-spin" /> : (isListening && activeFieldRef.current === field ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />)}
         <span className="sr-only">{isListening ? 'Stop listening' : 'Start listening'}</span>
@@ -319,6 +324,15 @@ export default function AiCoach() {
             <>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                        {!isSpeechSupported && (
+                            <Alert variant="destructive">
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertTitle>Voice Input Not Supported</AlertTitle>
+                                <AlertDescription>
+                                    Your browser does not support the Web Speech API. Please type your entries manually.
+                                </AlertDescription>
+                            </Alert>
+                        )}
                         <FormField
                         control={form.control}
                         name="activities"
@@ -338,7 +352,7 @@ export default function AiCoach() {
                                 </div>
                             </FormControl>
                             <FormDescription>
-                                Click the mic to speak. Aya will polish your transcription.
+                                {isSpeechSupported ? "Click the mic to speak. Aya will polish your transcription." : "Describe your tasks for the day."}
                             </FormDescription>
                             <FormMessage />
                             </FormItem>
@@ -425,5 +439,3 @@ export default function AiCoach() {
     </Card>
   );
 }
-
-    

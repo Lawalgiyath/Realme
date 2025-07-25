@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { BookHeart, Loader2, Sparkles, Wand2, Mic, MicOff, Goal, GitBranch, MessageSquare } from 'lucide-react';
+import { BookHeart, Loader2, Sparkles, Wand2, Mic, MicOff, Goal, GitBranch, MessageSquare, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -30,6 +30,7 @@ export default function Journal() {
   const { toast } = useToast();
   const [placeholder, setPlaceholder] = useState('');
   const [isListening, setIsListening] = useState(false);
+  const [isSpeechSupported, setIsSpeechSupported] = useState(true);
   const recognitionRef = useRef<any>(null);
   const { addAchievement, addInteraction, interactions, goals, moods } = useApp();
 
@@ -38,18 +39,28 @@ export default function Journal() {
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
+      setIsSpeechSupported(true);
       recognitionRef.current = new SpeechRecognition();
       recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
 
+      let finalTranscript = '';
+
+      recognitionRef.current.onstart = () => {
+          finalTranscript = entry ? entry + ' ' : '';
+      }
+
       recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
-        let finalTranscript = '';
+        let interimTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript.trim() + ' ';
+            finalTranscript += transcript + ' ';
+          } else {
+            interimTranscript += transcript;
           }
         }
-        setEntry((prev) => prev + finalTranscript);
+        setEntry(finalTranscript + interimTranscript);
       };
 
       recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
@@ -67,8 +78,10 @@ export default function Journal() {
       recognitionRef.current.onend = () => {
           setIsListening(false);
       }
+    } else {
+        setIsSpeechSupported(false);
     }
-  }, [toast]);
+  }, [toast, entry]);
   
   const handleToggleListening = async () => {
     if (!recognitionRef.current) {
@@ -210,12 +223,21 @@ export default function Journal() {
             <div>
                 <CardTitle>Journal with Aya</CardTitle>
                 <CardDescription>
-                Talk with your personal guide, Aya. Share a short worry or a long reflection to get a supportive perspective.
+                Share a short worry or a long reflection to get a supportive perspective.
                 </CardDescription>
             </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
+        {!isSpeechSupported && (
+            <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Voice Input Not Supported</AlertTitle>
+                <AlertDescription>
+                    Your browser does not support the Web Speech API. Please type your entries manually.
+                </AlertDescription>
+            </Alert>
+        )}
         <div>
             <div className="relative">
                 <Textarea
@@ -232,6 +254,7 @@ export default function Journal() {
                     size="icon"
                     onClick={handleToggleListening}
                     className={cn('absolute top-3 right-3 text-muted-foreground', isListening && 'text-destructive')}
+                    disabled={!isSpeechSupported}
                     >
                     {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
                     <span className="sr-only">{isListening ? 'Stop listening' : 'Start listening'}</span>
@@ -296,5 +319,3 @@ export default function Journal() {
     </Card>
   );
 }
-
-    
