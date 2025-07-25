@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -34,6 +35,7 @@ const formSchema = z.object({
   password: z.string().min(8, {
     message: "Password must be at least 8 characters.",
   }),
+  organizationCode: z.string().optional(),
 })
 
 const GoogleIcon = () => (
@@ -58,13 +60,14 @@ export function SignupForm() {
       name: "",
       email: "",
       password: "",
+      organizationCode: ""
     },
   })
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
     try {
-        await signup(values.name, values.email, values.password);
+        await signup(values.name, values.email, values.password, false, values.organizationCode);
         toast({
             title: "Account Created!",
             description: "You have successfully signed up. Taking you to the onboarding...",
@@ -184,6 +187,20 @@ export function SignupForm() {
                             <FormControl>
                                 <Input type="password" placeholder="••••••••" {...field} disabled={loading || googleLoading} />
                             </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="organizationCode"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Organization Code</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Enter code from your organization" {...field} disabled={loading || googleLoading} />
+                            </FormControl>
+                            <FormDescription>Optional. Add this to share anonymous wellness data with your organization.</FormDescription>
                             <FormMessage />
                             </FormItem>
                         )}

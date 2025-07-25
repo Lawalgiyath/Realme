@@ -6,7 +6,7 @@ import type { MentalHealthAssessmentOutput } from '@/ai/flows/mental-health-asse
 import React, { createContext, useState, useContext, ReactNode, useMemo, useEffect, useCallback } from 'react';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, type User as FirebaseUser, GoogleAuthProvider, signInWithPopup, signInAnonymously } from 'firebase/auth';
-import { doc, setDoc, onSnapshot, getDoc } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { DailyPlannerOutput } from '@/ai/flows/daily-planner-flow';
 
 export interface Mood {
@@ -26,6 +26,8 @@ export interface User {
   email: string | null;
   avatar: string | null;
   isAnonymous: boolean;
+  isLeader?: boolean;
+  organizationId?: string;
 }
 
 export type AchievementKey = 'firstGoal' | 'assessmentComplete' | 'firstJournal' | 'contentGenerated' | 'fiveGoalsDone' | 'moodWeek' | 'firstResource' | 'tenGoalsDone' | 'worryJarUse' | 'moodMonth';
@@ -57,6 +59,8 @@ interface UserData {
     interactions: Interaction[];
     dailyPlan?: DailyPlannerOutput | null;
     dailyPlanTimestamp?: string | null;
+    organizationId?: string;
+    isLeader?: boolean;
 }
 
 
@@ -71,7 +75,7 @@ interface AppContextType {
   personalizedContent: PersonalizedContentOutput | null;
   setPersonalizedContent: (content: PersonalizedContentOutput | null) => void;
   user: User | null;
-  signup: (name: string, email: string, password: string) => Promise<FirebaseUser>;
+  signup: (name: string, email: string, password: string, isLeader?: boolean, organizationCode?: string) => Promise<FirebaseUser>;
   login: (email: string, password: string) => Promise<FirebaseUser>;
   loginWithGoogle: () => Promise<FirebaseUser>;
   loginAnonymously: () => Promise<FirebaseUser>;
@@ -136,28 +140,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        const currentUser: User = {
-            uid: firebaseUser.uid,
-            name: firebaseUser.displayName || (firebaseUser.isAnonymous ? "Guest" : "User"),
-            email: firebaseUser.email,
-            avatar: firebaseUser.photoURL,
-            isAnonymous: firebaseUser.isAnonymous
-        };
-        setUser(currentUser);
-
-        const userDocRef = doc(db, 'users', firebaseUser.uid);
-
-        // Check if user document exists, create it if not
-        const docSnap = await getDoc(userDocRef);
-        if (!docSnap.exists()) {
-          try {
-            await setDoc(userDocRef, initialData);
-          } catch(e) {
-            console.error("Error creating user document:", e);
-          }
-        }
         
         // Firestore real-time listener
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
         const unsubscribeFirestore = onSnapshot(userDocRef, (docSnap) => {
              if (docSnap.exists()) {
                 const data = docSnap.data() as UserData;
@@ -172,6 +157,17 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
                     }
                 }
                 setUserData(data);
+
+                 const currentUser: User = {
+                    uid: firebaseUser.uid,
+                    name: firebaseUser.displayName || (firebaseUser.isAnonymous ? "Guest" : "User"),
+                    email: firebaseUser.email,
+                    avatar: firebaseUser.photoURL,
+                    isAnonymous: firebaseUser.isAnonymous,
+                    isLeader: data.isLeader,
+                    organizationId: data.organizationId
+                };
+                setUser(currentUser);
             }
              setLoading(false);
         }, (error) => {
@@ -246,13 +242,32 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [user, userData.interactions, updateUserData]);
 
 
-  const signup = async (name: string, email: string, password: string): Promise<FirebaseUser> => {
+  const signup = async (name: string, email: string, password: string, isLeader = false, organizationCode?: string): Promise<FirebaseUser> => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const avatarUrl = getRandomAvatar();
+    const avatarUrl = isLeader ? null : getRandomAvatar();
     await updateProfile(userCredential.user, {
       displayName: name,
       photoURL: avatarUrl,
     });
+    
+    const userDataToSet: Partial<UserData> = {
+        isLeader
+    };
+
+    if (organizationCode) {
+        const orgQuery = query(collection(db, 'organizations'), where('__name__', '==', organizationCode));
+        const orgSnapshot = await getDocs(orgQuery);
+        if (!orgSnapshot.empty) {
+            userDataToSet.organizationId = organizationCode;
+        } else {
+            console.warn("Invalid organization code provided during signup.");
+            // Optionally, you could throw an error here to notify the user on the client-side.
+        }
+    }
+    
+    // Create the user document in Firestore
+    const userDocRef = doc(db, 'users', userCredential.user.uid);
+    await setDoc(userDocRef, {...initialData, ...userDataToSet});
     
     return userCredential.user;
   };
@@ -265,11 +280,22 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const loginWithGoogle = async (): Promise<FirebaseUser> => {
       const provider = new GoogleAuthProvider();
       const userCredential = await signInWithPopup(auth, provider);
+      const userDocRef = doc(db, 'users', userCredential.user.uid);
+      const docSnap = await getDoc(userDocRef);
+
+      if (!docSnap.exists()) {
+        // First time Google sign-in
+        const avatarUrl = getRandomAvatar();
+        await updateProfile(userCredential.user, { photoURL: avatarUrl });
+        await setDoc(userDocRef, initialData);
+      }
       return userCredential.user;
   }
   
   const loginAnonymously = async(): Promise<FirebaseUser> => {
       const userCredential = await signInAnonymously(auth);
+       const userDocRef = doc(db, 'users', userCredential.user.uid);
+       await setDoc(userDocRef, initialData);
       return userCredential.user;
   }
 
@@ -327,5 +353,3 @@ export const useApp = () => {
   }
   return context;
 };
-
-    
