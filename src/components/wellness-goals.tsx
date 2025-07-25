@@ -11,7 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { personalizedContentSuggestions } from '@/ai/flows/personalized-content';
-import Image from 'next/image';
+import Link from 'next/link';
 
 export default function WellnessGoals() {
   const { goals, setGoals, assessmentResult, personalizedContent, setPersonalizedContent, addAchievement } = useApp();
@@ -167,55 +167,52 @@ export default function WellnessGoals() {
                         </Button>
                     </div>
                 ) : (
-                     <div className="grid gap-6 md:grid-cols-1">
-                        <Card>
-                            <CardContent className="p-4 md:p-6">
-                                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><BookOpen className="text-primary h-5 w-5"/> Articles</h3>
-                                <ul className="space-y-4">
-                                    {personalizedContent.articles.map((article, i) => (
-                                        <li key={i} className="flex items-start gap-4">
-                                            <Image data-ai-hint="wellness article" src="https://placehold.co/100x100.png" alt={article} width={60} height={60} className="rounded-lg aspect-square object-cover" />
-                                            <div>
-                                                <p className="font-medium text-sm leading-snug">{article}</p>
-                                                <a href={`https://www.google.com/search?q=${encodeURIComponent(article)}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">Read more</a>
+                     <div className="space-y-4">
+                        <div className="p-4 rounded-lg border">
+                            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2"><BookOpen className="text-primary h-5 w-5"/> Articles For You</h3>
+                            <ul className="space-y-3">
+                                {personalizedContent.articles.map((article, i) => (
+                                    <li key={i}>
+                                        <Link href={`/article/${encodeURIComponent(article)}`} className="flex items-center gap-3 p-2 rounded-md hover:bg-secondary/50 transition-colors">
+                                            <div className="p-2 bg-secondary rounded-full"><BookOpen className="h-4 w-4 text-secondary-foreground" /></div>
+                                            <p className="font-medium text-sm flex-1">{article}</p>
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                         <div className="p-4 rounded-lg border">
+                            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2"><Wind className="text-primary h-5 w-5"/> Suggested Meditations</h3>
+                            <ul className="space-y-3">
+                                {personalizedContent.meditations.map((meditation, i) => (
+                                   <li key={i}>
+                                        <a href={`https://www.youtube.com/results?search_query=guided+meditation+${encodeURIComponent(meditation)}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-2 rounded-md hover:bg-secondary/50 transition-colors">
+                                           <div className="p-2 bg-secondary rounded-full"><Wind className="h-4 w-4 text-secondary-foreground" /></div>
+                                           <div className='flex-1'>
+                                                <p className="font-medium text-sm">{meditation}</p>
+                                                <span className="text-xs text-muted-foreground">Listen on YouTube</span>
+                                           </div>
+                                        </a>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                         <div className="p-4 rounded-lg border">
+                            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2"><BrainCircuit className="text-primary h-5 w-5"/> Wellness Exercises</h3>
+                            <ul className="space-y-3">
+                                {personalizedContent.exercises.map((exercise, i) => (
+                                    <li key={i}>
+                                        <a href={`https://www.google.com/search?q=${encodeURIComponent(exercise)} exercise`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-2 rounded-md hover:bg-secondary/50 transition-colors">
+                                            <div className="p-2 bg-secondary rounded-full"><BrainCircuit className="h-4 w-4 text-secondary-foreground" /></div>
+                                            <div className='flex-1'>
+                                                <p className="font-medium text-sm">{exercise}</p>
+                                                <span className="text-xs text-muted-foreground">Learn more on Google</span>
                                             </div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardContent className="p-4 md:p-6">
-                                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><Wind className="text-primary h-5 w-5"/> Meditations</h3>
-                                <ul className="space-y-4">
-                                    {personalizedContent.meditations.map((meditation, i) => (
-                                        <li key={i} className="flex items-start gap-4">
-                                            <Image data-ai-hint="meditation nature" src="https://placehold.co/100x100.png" alt={meditation} width={60} height={60} className="rounded-lg aspect-square object-cover" />
-                                            <div>
-                                                <p className="font-medium text-sm leading-snug">{meditation}</p>
-                                                <a href={`https://www.youtube.com/results?search_query=guided+meditation+${encodeURIComponent(meditation)}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">Start session</a>
-                                            </div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardContent className="p-4 md:p-6">
-                                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><BrainCircuit className="text-primary h-5 w-5"/> Exercises</h3>
-                                <ul className="space-y-4">
-                                    {personalizedContent.exercises.map((exercise, i) => (
-                                        <li key={i} className="flex items-start gap-4">
-                                            <Image data-ai-hint="mindfulness yoga" src="https://placehold.co/100x100.png" alt={exercise} width={60} height={60} className="rounded-lg aspect-square object-cover" />
-                                            <div>
-                                                <p className="font-medium text-sm leading-snug">{exercise}</p>
-                                                <a href={`https://www.google.com/search?q=${encodeURIComponent(exercise)} exercise`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">Try it now</a>
-                                            </div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </CardContent>
-                        </Card>
+                                        </a>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
                     </div>
                 )}
             </CardContent>
@@ -224,5 +221,3 @@ export default function WellnessGoals() {
     </Card>
   );
 }
-
-    
