@@ -4,39 +4,33 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if a user is an authenticated, non-anonymous user.
-    function isSignedIn() {
-      return request.auth != null && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    // Helper function to check if a user is an organization leader
+    function isOrgLeader(orgId) {
+      return exists(/databases/$(database)/documents/organizations/$(orgId)) &&
+             get(/databases/$(database)/documents/organizations/$(orgId)).data.leaderUid == request.auth.uid;
     }
 
-    // Helper function to check if a user is the owner of a document.
-    function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
-    }
-
-    // Rules for the 'users' collection
     match /users/{userId} {
-      // A user can create, read, update, and delete their own document.
-      // An organization leader can read the data of users in their organization.
-      allow read: if isOwner(userId) || 
-                   (get(/databases/$(database)/documents/organizations/$(resource.data.organizationId)).data.leaderUid == request.auth.uid);
-      allow create, update, delete: if isOwner(userId);
+      // Users can only read/write their own data
+      allow read, write: if request.auth.uid == userId;
+
+      // Org leaders can read their members' data for aggregated insights
+      allow list: if isOrgLeader(request.query.where[0][2]);
     }
 
-    // Rules for the 'organizations' collection
-    match /organizations/{orgId} {
-        // Any signed-in user can read an organization document (to verify the code).
-        allow read: if request.auth != null;
-        // Only the designated leader can create or update their organization's document.
-        allow create, update: if request.auth.uid == request.resource.data.leaderUid;
-    }
-    
-    // Rules for the 'community-stories' collection
     match /community-stories/{storyId} {
-        // Any authenticated, non-anonymous user can create a story.
-        allow create: if isSignedIn();
-        // Any authenticated user (including anonymous guests) can read stories.
+      // Allow authenticated users to read stories
+      allow read: if request.auth != null;
+      // Allow non-anonymous users to create stories
+      allow create: if request.auth != null && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
+    match /organizations/{orgId} {
+        // Allow any authenticated user to read (e.g., to verify a code)
         allow read: if request.auth != null;
+        
+        // Only the designated leader can create or update their own organization document
+        allow create, update: if isOrgLeader(orgId);
     }
   }
 }
