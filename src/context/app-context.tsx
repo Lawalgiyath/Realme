@@ -5,7 +5,7 @@ import type { PersonalizedContentOutput } from '@/ai/flows/personalized-content'
 import type { MentalHealthAssessmentOutput } from '@/ai/flows/mental-health-assessment';
 import React, { createContext, useState, useContext, ReactNode, useMemo, useEffect, useCallback } from 'react';
 import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, type User as FirebaseUser, GoogleAuthProvider, signInWithPopup, signInAnonymously } from 'firebase/auth';
+import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, type User as FirebaseUser, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signInAnonymously } from 'firebase/auth';
 import { doc, setDoc, onSnapshot, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { DailyPlannerOutput } from '@/ai/flows/daily-planner-flow';
 
@@ -77,7 +77,7 @@ interface AppContextType {
   user: User | null;
   signup: (name: string, email: string, password: string, isLeader?: boolean, organizationCode?: string, organizationName?: string) => Promise<FirebaseUser>;
   login: (email: string, password: string) => Promise<FirebaseUser>;
-  loginWithGoogle: () => Promise<FirebaseUser>;
+  loginWithGoogle: () => Promise<void>;
   loginAnonymously: () => Promise<FirebaseUser>;
   logout: () => Promise<void>;
   loading: boolean;
@@ -138,6 +138,31 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [unlockedAchievement, setUnlockedAchievement] = useState<Achievement | null>(null);
 
   useEffect(() => {
+    const handleRedirectResult = async () => {
+        try {
+            const result = await getRedirectResult(auth);
+            if (result) {
+                // User has successfully signed in via redirect.
+                const userDocRef = doc(db, 'users', result.user.uid);
+                const docSnap = await getDoc(userDocRef);
+
+                if (!docSnap.exists()) {
+                    // First time Google sign-in
+                    await setDoc(userDocRef, {
+                        ...initialData,
+                        name: result.user.displayName,
+                        email: result.user.email
+                    });
+                }
+            }
+        } catch (error) {
+            console.error("Error handling redirect result:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+    handleRedirectResult();
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         
@@ -243,67 +268,58 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
 
   const signup = async (name: string, email: string, password: string, isLeader = false, organizationCode?: string, organizationName?: string): Promise<FirebaseUser> => {
-    try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const { user: firebaseUser } = userCredential;
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const { user: firebaseUser } = userCredential;
 
-        if (isLeader) {
-            // Logic for Organization Leader
-            if (!organizationName) throw new Error("Organization name is required for leaders.");
-            
-            await updateProfile(firebaseUser, { displayName: name });
+    if (isLeader) {
+      if (!organizationName) throw new Error("Organization name is required for leaders.");
+      
+      const orgRef = await addDoc(collection(db, 'organizations'), {
+          name: organizationName,
+          leaderUid: firebaseUser.uid,
+          leaderName: name,
+          createdAt: serverTimestamp()
+      });
 
-            // 1. Create the organization document to get its ID.
-            const orgRef = await addDoc(collection(db, 'organizations'), {
-                name: organizationName,
-                leaderUid: firebaseUser.uid,
-                leaderName: name,
-                createdAt: serverTimestamp()
-            });
+      await updateProfile(firebaseUser, { displayName: name });
+      
+      const userDocRef = doc(db, 'users', firebaseUser.uid);
+      await setDoc(userDocRef, {
+          ...initialData,
+          name: name,
+          email: email,
+          isLeader: true,
+          organizationId: orgRef.id,
+      });
 
-            // 2. Create the leader's user document with the new organization ID.
-            const userDocRef = doc(db, 'users', firebaseUser.uid);
-            await setDoc(userDocRef, {
-                ...initialData,
-                name: name,
-                email: email,
-                isLeader: true,
-                organizationId: orgRef.id, // Use the new organization's ID
-            });
-        } else {
-            // Logic for regular user
-            const avatarUrl = getRandomAvatar();
-            await updateProfile(firebaseUser, {
-                displayName: name,
-                photoURL: avatarUrl,
-            });
+    } else {
+        const avatarUrl = getRandomAvatar();
+        await updateProfile(firebaseUser, {
+            displayName: name,
+            photoURL: avatarUrl,
+        });
 
-            const userDocRef = doc(db, 'users', firebaseUser.uid);
-            const userDataToSet: Partial<UserData> & { name: string; email: string, isLeader: boolean } = {
-                ...initialData,
-                name: name,
-                email: email,
-                isLeader: false,
-            };
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
+        const userDataToSet: Partial<UserData> & { name: string; email: string, isLeader: boolean } = {
+            ...initialData,
+            name: name,
+            email: email,
+            isLeader: false,
+        };
 
-            if (organizationCode) {
-                const orgDocRef = doc(db, 'organizations', organizationCode);
-                const orgDocSnap = await getDoc(orgDocRef);
-                if (orgDocSnap.exists()) {
-                    userDataToSet.organizationId = organizationCode;
-                } else {
-                    console.warn("Invalid organization code provided during signup.");
-                }
+        if (organizationCode) {
+            const orgDocRef = doc(db, 'organizations', organizationCode);
+            const orgDocSnap = await getDoc(orgDocRef);
+            if (orgDocSnap.exists()) {
+                userDataToSet.organizationId = organizationCode;
+            } else {
+                console.warn("Invalid organization code provided during signup.");
             }
-
-            await setDoc(userDocRef, userDataToSet);
         }
-        
-        return firebaseUser;
-    } catch(error) {
-        console.error("Signup failed in context:", error);
-        throw error;
+        await setDoc(userDocRef, userDataToSet);
     }
+    
+    return firebaseUser;
   };
 
   const login = async (email: string, password: string): Promise<FirebaseUser> => {
@@ -311,23 +327,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       return userCredential.user;
   };
 
-  const loginWithGoogle = async (): Promise<FirebaseUser> => {
+  const loginWithGoogle = async (): Promise<void> => {
       const provider = new GoogleAuthProvider();
-      const userCredential = await signInWithPopup(auth, provider);
-      const userDocRef = doc(db, 'users', userCredential.user.uid);
-      const docSnap = await getDoc(userDocRef);
-
-      if (!docSnap.exists()) {
-        // First time Google sign-in
-        const avatarUrl = getRandomAvatar();
-        await updateProfile(userCredential.user, { photoURL: avatarUrl });
-        await setDoc(userDocRef, {
-            ...initialData,
-            name: userCredential.user.displayName,
-            email: userCredential.user.email
-        });
-      }
-      return userCredential.user;
+      await signInWithRedirect(auth, provider);
   }
   
   const loginAnonymously = async(): Promise<FirebaseUser> => {
