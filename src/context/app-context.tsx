@@ -6,7 +6,7 @@ import type { MentalHealthAssessmentOutput } from '@/ai/flows/mental-health-asse
 import React, { createContext, useState, useContext, ReactNode, useMemo, useEffect, useCallback } from 'react';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, type User as FirebaseUser, GoogleAuthProvider, signInWithPopup, signInAnonymously } from 'firebase/auth';
-import { doc, setDoc, onSnapshot, getDoc, collection, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, getDoc } from 'firebase/firestore';
 import { DailyPlannerOutput } from '@/ai/flows/daily-planner-flow';
 
 export interface Mood {
@@ -26,9 +26,6 @@ export interface User {
   email: string | null;
   avatar: string | null;
   isAnonymous: boolean;
-  isLeader?: boolean;
-  organizationId?: string;
-  organizationName?: string;
 }
 
 export type AchievementKey = 'firstGoal' | 'assessmentComplete' | 'firstJournal' | 'contentGenerated' | 'fiveGoalsDone' | 'moodWeek' | 'firstResource' | 'tenGoalsDone' | 'worryJarUse' | 'moodMonth';
@@ -59,9 +56,6 @@ interface UserData {
     interactions: Interaction[];
     dailyPlan?: DailyPlannerOutput | null;
     dailyPlanTimestamp?: string | null;
-    organizationId?: string;
-    organizationName?: string;
-    isLeader?: boolean;
     name?: string;
     email?: string;
     avatar?: string;
@@ -79,7 +73,7 @@ interface AppContextType {
   personalizedContent: PersonalizedContentOutput | null;
   setPersonalizedContent: (content: PersonalizedContentOutput | null) => void;
   user: User | null;
-  signup: (name: string, email: string, password: string, isLeader?: boolean, organizationCode?: string, organizationName?: string) => Promise<FirebaseUser>;
+  signup: (name: string, email: string, password: string) => Promise<FirebaseUser>;
   login: (email: string, password: string) => Promise<FirebaseUser>;
   loginWithGoogle: () => Promise<void>;
   loginAnonymously: () => Promise<FirebaseUser>;
@@ -164,9 +158,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
                     email: firebaseUser.email,
                     avatar: firebaseUser.photoURL,
                     isAnonymous: firebaseUser.isAnonymous,
-                    isLeader: data.isLeader,
-                    organizationId: data.organizationId,
-                    organizationName: data.organizationName,
                 };
                 setUser(currentUser);
             }
@@ -243,66 +234,22 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [user, userData.interactions, updateUserData]);
 
 
-  const signup = async (name: string, email: string, password: string, isLeader = false, organizationCode?: string, organizationName?: string): Promise<FirebaseUser> => {
+  const signup = async (name: string, email: string, password: string): Promise<FirebaseUser> => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const { user: firebaseUser } = userCredential;
     const userDocRef = doc(db, 'users', firebaseUser.uid);
     await updateProfile(firebaseUser, { displayName: name });
 
-    let userDataToSet: UserData = {
+    const avatarUrl = getRandomAvatar();
+    await updateProfile(firebaseUser, { photoURL: avatarUrl });
+    
+    const userDataToSet: UserData = {
         ...initialData,
         name: name,
         email: email,
+        avatar: avatarUrl,
     };
-
-    if (isLeader) {
-        if (!organizationName) throw new Error("Organization name is required for leaders.");
-        
-        const newOrgId = doc(collection(db, 'organizations')).id;
-        
-        userDataToSet = {
-            ...userDataToSet,
-            isLeader: true,
-            organizationId: newOrgId,
-            organizationName: organizationName,
-        };
-        await setDoc(userDocRef, userDataToSet);
-
-    } else { // Regular user signup
-        const avatarUrl = getRandomAvatar();
-        await updateProfile(firebaseUser, { photoURL: avatarUrl });
-        userDataToSet.avatar = avatarUrl;
-        
-        if (organizationCode) {
-            // Check if this is the first member joining
-            const orgDocRef = doc(db, 'organizations', organizationCode);
-            const orgDocSnap = await getDoc(orgDocRef);
-
-            if (!orgDocSnap.exists()) {
-                // Find the leader to get the organization name
-                const q = query(collection(db, "users"), where("organizationId", "==", organizationCode), where("isLeader", "==", true));
-                const querySnapshot = await getDocs(q);
-
-                if (!querySnapshot.empty) {
-                    const leaderDoc = querySnapshot.docs[0];
-                    const leaderData = leaderDoc.data();
-                    
-                    // Create the organization document
-                    await setDoc(orgDocRef, {
-                        name: leaderData.organizationName,
-                        leaderUid: leaderDoc.id,
-                        leaderName: leaderData.name,
-                        createdAt: serverTimestamp()
-                    });
-                } else {
-                    console.warn("Could not find a leader for the provided organization code.");
-                    throw new Error("Invalid organization code. Please check with your organization's leader.");
-                }
-            }
-            userDataToSet.organizationId = organizationCode;
-        }
-        await setDoc(userDocRef, userDataToSet);
-    }
+    await setDoc(userDocRef, userDataToSet);
     
     return firebaseUser;
   };
