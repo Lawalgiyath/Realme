@@ -5,8 +5,8 @@ import type { PersonalizedContentOutput } from '@/ai/flows/personalized-content'
 import type { MentalHealthAssessmentOutput } from '@/ai/flows/mental-health-assessment';
 import React, { createContext, useState, useContext, ReactNode, useMemo, useEffect, useCallback } from 'react';
 import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, type User as FirebaseUser, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signInAnonymously } from 'firebase/auth';
-import { doc, setDoc, onSnapshot, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, type User as FirebaseUser, GoogleAuthProvider, signInWithPopup, signInAnonymously } from 'firebase/auth';
+import { doc, setDoc, onSnapshot, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { DailyPlannerOutput } from '@/ai/flows/daily-planner-flow';
 
 export interface Mood {
@@ -138,33 +138,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [unlockedAchievement, setUnlockedAchievement] = useState<Achievement | null>(null);
 
   useEffect(() => {
-    // This is to process the result from a redirect-based sign-in like Google's
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result) {
-          // User has successfully signed in via redirect. Now onAuthStateChanged will handle it.
-          // We can check if it's a new user and create their document if needed.
-          const userDocRef = doc(db, 'users', result.user.uid);
-          getDoc(userDocRef).then(docSnap => {
-            if (!docSnap.exists()) {
-              // This is a brand new user from Google
-              setDoc(userDocRef, {
-                ...initialData,
-                name: result.user.displayName,
-                email: result.user.email,
-              });
-            }
-          })
-        }
-      })
-      .catch((error) => {
-        console.error("Error getting redirect result:", error);
-      })
-      .finally(() => {
-        // The main onAuthStateChanged listener will now take over.
-        // It's responsible for setting the loading state.
-      });
-
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         
@@ -330,7 +303,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const loginWithGoogle = async (): Promise<void> => {
       const provider = new GoogleAuthProvider();
-      await signInWithRedirect(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const userDocRef = doc(db, 'users', result.user.uid);
+      const docSnap = await getDoc(userDocRef);
+      if (!docSnap.exists()) {
+        await setDoc(userDocRef, {
+          ...initialData,
+          name: result.user.displayName,
+          email: result.user.email,
+        });
+      }
   }
   
   const loginAnonymously = async(): Promise<FirebaseUser> => {
@@ -394,5 +376,3 @@ export const useApp = () => {
   }
   return context;
 };
-
-    
