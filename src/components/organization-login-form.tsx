@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 import { useApp } from "@/context/app-context"
-import { HeartPulse, Loader2, Briefcase } from "lucide-react"
+import { BookOpen, Loader2 } from "lucide-react"
 
 const formSchema = z.object({
   email: z.string().email({
@@ -91,14 +91,16 @@ export default function OrganizationLoginForm() {
 
   return (
     <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-            <div className="flex justify-center items-center gap-2 mb-4">
-                <div className="p-1.5 rounded-lg bg-primary">
-                    <Briefcase className="h-6 w-6 text-primary-foreground" />
+        <CardHeader>
+            <div className="flex items-center gap-4 mb-2">
+                <div className="p-3 rounded-lg bg-primary">
+                    <BookOpen className="h-6 w-6 text-primary-foreground" />
                 </div>
-                <h1 className="text-2xl font-bold text-foreground">Realme for Organizations</h1>
+                <div>
+                  <h1 className="text-xl font-bold text-foreground">Realme for Organizations</h1>
+                  <CardTitle className="text-2xl">Leader Login</CardTitle>
+                </div>
             </div>
-            <CardTitle>Leader Login</CardTitle>
             <CardDescription>Enter your credentials to access your organization's dashboard.</CardDescription>
         </CardHeader>
         <CardContent>
