@@ -30,7 +30,7 @@ export default function Journal() {
   const { toast } = useToast();
   const [placeholder, setPlaceholder] = useState('');
   const [isListening, setIsListening] = useState(false);
-  const [isSpeechSupported, setIsSpeechSupported] = useState(true);
+  const [isSpeechSupported, setIsSpeechSupported] = useState(false);
   const recognitionRef = useRef<any>(null);
   const { addAchievement, addInteraction, interactions, goals, moods } = useApp();
 
@@ -234,7 +234,7 @@ export default function Journal() {
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Voice Input Not Supported</AlertTitle>
                 <AlertDescription>
-                    Your browser does not support the Web Speech API. Please type your entries manually.
+                    Your browser does not support the Web Speech API, which is common on mobile devices. Please type your entries manually.
                 </AlertDescription>
             </Alert>
         )}
@@ -248,17 +248,18 @@ export default function Journal() {
                     disabled={loading}
                     className="text-base pr-12"
                 />
-                 <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleToggleListening}
-                    className={cn('absolute top-3 right-3 text-muted-foreground', isListening && 'text-destructive')}
-                    disabled={!isSpeechSupported}
-                    >
-                    {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-                    <span className="sr-only">{isListening ? 'Stop listening' : 'Start listening'}</span>
-                </Button>
+                 {isSpeechSupported && (
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleToggleListening}
+                        className={cn('absolute top-3 right-3 text-muted-foreground', isListening && 'text-destructive')}
+                        >
+                        {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                        <span className="sr-only">{isListening ? 'Stop listening' : 'Start listening'}</span>
+                    </Button>
+                 )}
             </div>
         </div>
         <div className="flex justify-end">

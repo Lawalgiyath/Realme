@@ -33,7 +33,7 @@ export default function AiCoach() {
   const [loading, setLoading] = useState(false);
   const [isCorrecting, setIsCorrecting] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [isSpeechSupported, setIsSpeechSupported] = useState(true);
+  const [isSpeechSupported, setIsSpeechSupported] = useState(false);
   
   const recognitionRef = useRef<any>(null);
   const activeFieldRef = useRef<ActiveField>('activities');
@@ -211,19 +211,23 @@ export default function AiCoach() {
     }
   }
 
-  const MicButton = ({ field, isTextarea = false }: { field: ActiveField, isTextarea?: boolean }) => (
+  const MicButton = ({ field, isTextarea = false }: { field: ActiveField, isTextarea?: boolean }) => {
+    if (!isSpeechSupported) return null;
+
+    return (
      <Button
         type="button"
         variant="ghost"
         size="sm"
         onClick={() => handleToggleListening(field)}
         className={cn('absolute right-2 z-10', isTextarea ? 'top-2' : 'top-1/2 -translate-y-1/2', isListening && activeFieldRef.current === field && 'text-destructive')}
-        disabled={isCorrecting || !isSpeechSupported}
+        disabled={isCorrecting}
       >
         {isCorrecting && activeFieldRef.current === field ? <Loader2 className="h-5 w-5 animate-spin" /> : (isListening && activeFieldRef.current === field ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />)}
         <span className="sr-only">{isListening ? 'Stop listening' : 'Start listening'}</span>
       </Button>
-  )
+    )
+  }
   
   const renderPlan = (plan: DailyPlannerOutput) => (
     <div className="mt-8 animate-in fade-in-50 space-y-6">
@@ -329,7 +333,7 @@ export default function AiCoach() {
                                 <AlertCircle className="h-4 w-4" />
                                 <AlertTitle>Voice Input Not Supported</AlertTitle>
                                 <AlertDescription>
-                                    Your browser does not support the Web Speech API. Please type your entries manually.
+                                    Your browser does not support the Web Speech API, which is common on mobile devices. Please type your entries manually.
                                 </AlertDescription>
                             </Alert>
                         )}
