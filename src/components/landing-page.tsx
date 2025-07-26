@@ -434,5 +434,3 @@ const TestimonialCard = ({ text, name, icon: Icon }: { text: string, name: strin
     </CardContent>
   </Card>
 );
-
-    
