@@ -1,3 +1,4 @@
+
 import type {Config} from 'tailwindcss';
 
 export default {
@@ -15,7 +16,7 @@ export default {
         code: ['monospace'],
       },
       boxShadow: {
-        'inner-strong': 'inset 0 0 0 8px hsl(var(--card)), 0 4px 15px 5px rgba(0, 0, 0, 0.2)',
+        'inner-strong': 'inset 0 0 0 8px hsl(var(--card))',
       },
       colors: {
         background: 'hsl(var(--background))',
@@ -100,5 +101,3 @@ export default {
   },
   plugins: [require('tailwindcss-animate')],
 } satisfies Config;
-
-    

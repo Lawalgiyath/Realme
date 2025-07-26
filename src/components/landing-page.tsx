@@ -4,7 +4,7 @@ import { HeartPulse, Rocket, Sparkles, BrainCircuit, BarChart, Users, BookHeart,
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/app-context';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
@@ -107,11 +107,30 @@ const features = [
 const InteractiveFeatureCards = () => {
     const [activeIndex, setActiveIndex] = useState(0);
     const isMobile = useIsMobile();
+    const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
     const handleCardClick = (index: number) => {
         setActiveIndex(index);
+        // Stop the interval when user interacts manually
+        if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+        }
     };
     
+    useEffect(() => {
+        // Start the automatic cycle
+        intervalRef.current = setInterval(() => {
+            setActiveIndex((prevIndex) => (prevIndex + 1) % features.length);
+        }, 5000); // Change card every 5 seconds
+
+        // Cleanup interval on component unmount
+        return () => {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+            }
+        };
+    }, []);
+
     if (isMobile) {
         return (
             <div className="flex flex-col gap-4">
@@ -131,31 +150,29 @@ const InteractiveFeatureCards = () => {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
             <div className="relative h-96">
-                {features.map((feature, index) => {
-                    const isActive = index === activeIndex;
-                    return (
-                        <motion.div
-                            key={feature.title}
-                            className={cn(
-                                "absolute w-full h-full p-8 rounded-2xl text-white flex flex-col justify-end cursor-pointer shadow-2xl",
-                                "transform-gpu transition-all duration-500 ease-in-out bg-gradient-to-br",
-                                feature.color
-                            )}
-                            initial={{ y: 0, scale: 0.8, opacity: 0 }}
-                            animate={{
-                                y: isActive ? 0 : (index - activeIndex) * -10,
-                                scale: isActive ? 1 : 1 - (Math.abs(index - activeIndex) * 0.1),
-                                zIndex: features.length - Math.abs(index - activeIndex),
-                                opacity: isActive ? 1 : 1 - (Math.abs(index - activeIndex) * 0.3)
-                            }}
-                            onClick={() => handleCardClick(index)}
-                        >
-                            <feature.icon className="w-10 h-10 mb-4" />
-                            <h3 className="text-2xl font-bold">{feature.title}</h3>
-                            <p className="opacity-80 mt-2">{feature.description}</p>
-                        </motion.div>
-                    );
-                })}
+                 <AnimatePresence>
+                    {features.map((feature, index) => {
+                        const isActive = index === activeIndex;
+                        return isActive ? (
+                            <motion.div
+                                key={feature.title}
+                                className={cn(
+                                    "absolute w-full h-full p-8 rounded-2xl text-white flex flex-col justify-end shadow-2xl",
+                                    "transform-gpu bg-gradient-to-br",
+                                    feature.color
+                                )}
+                                initial={{ y: 20, opacity: 0, scale: 0.95 }}
+                                animate={{ y: 0, opacity: 1, scale: 1 }}
+                                exit={{ y: -20, opacity: 0, scale: 0.95 }}
+                                transition={{ duration: 0.5, ease: "easeInOut" }}
+                            >
+                                <feature.icon className="w-10 h-10 mb-4" />
+                                <h3 className="text-2xl font-bold">{feature.title}</h3>
+                                <p className="opacity-80 mt-2">{feature.description}</p>
+                            </motion.div>
+                        ) : null;
+                    })}
+                </AnimatePresence>
             </div>
             <div className="flex flex-col gap-4">
                 {features.map((feature, index) => (
@@ -256,13 +273,14 @@ export default function LandingPage() {
                         </Button>
                     </div>
                 </div>
-                 <div className="relative aspect-square max-w-lg mx-auto lg:mx-0 shadow-inner-strong rounded-2xl p-2">
+                 <div className="relative aspect-square max-w-lg mx-auto lg:mx-0 shadow-inner-strong rounded-2xl p-2 bg-background">
                     <Image
                         src="https://i.ibb.co/DPSKSxS2/pexels-sam-jhay-316274033-14024358.jpg"
                         alt="A person meditating peacefully outdoors"
                         width={800}
                         height={800}
                         className="rounded-xl w-full h-full object-cover"
+                        priority
                     />
                 </div>
             </div>
@@ -370,5 +388,3 @@ const TestimonialCard = ({ text, name, icon: Icon }: { text: string, name: strin
     </CardContent>
   </Card>
 );
-
-    
