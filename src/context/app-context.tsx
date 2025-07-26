@@ -138,30 +138,32 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [unlockedAchievement, setUnlockedAchievement] = useState<Achievement | null>(null);
 
   useEffect(() => {
-    const handleRedirectResult = async () => {
-        try {
-            const result = await getRedirectResult(auth);
-            if (result) {
-                // User has successfully signed in via redirect.
-                const userDocRef = doc(db, 'users', result.user.uid);
-                const docSnap = await getDoc(userDocRef);
-
-                if (!docSnap.exists()) {
-                    // First time Google sign-in
-                    await setDoc(userDocRef, {
-                        ...initialData,
-                        name: result.user.displayName,
-                        email: result.user.email
-                    });
-                }
+    // This is to process the result from a redirect-based sign-in like Google's
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result) {
+          // User has successfully signed in via redirect. Now onAuthStateChanged will handle it.
+          // We can check if it's a new user and create their document if needed.
+          const userDocRef = doc(db, 'users', result.user.uid);
+          getDoc(userDocRef).then(docSnap => {
+            if (!docSnap.exists()) {
+              // This is a brand new user from Google
+              setDoc(userDocRef, {
+                ...initialData,
+                name: result.user.displayName,
+                email: result.user.email,
+              });
             }
-        } catch (error) {
-            console.error("Error handling redirect result:", error);
-        } finally {
-            setLoading(false);
+          })
         }
-    };
-    handleRedirectResult();
+      })
+      .catch((error) => {
+        console.error("Error getting redirect result:", error);
+      })
+      .finally(() => {
+        // The main onAuthStateChanged listener will now take over.
+        // It's responsible for setting the loading state.
+      });
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
@@ -271,31 +273,30 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const { user: firebaseUser } = userCredential;
 
-    if (isLeader) {
-      if (!organizationName) throw new Error("Organization name is required for leaders.");
-      
-      const orgRef = await addDoc(collection(db, 'organizations'), {
-          name: organizationName,
-          leaderUid: firebaseUser.uid,
-          leaderName: name,
-          createdAt: serverTimestamp()
-      });
+    await updateProfile(firebaseUser, { displayName: name });
 
-      await updateProfile(firebaseUser, { displayName: name });
-      
-      const userDocRef = doc(db, 'users', firebaseUser.uid);
-      await setDoc(userDocRef, {
-          ...initialData,
-          name: name,
-          email: email,
-          isLeader: true,
-          organizationId: orgRef.id,
-      });
+    if (isLeader) {
+        if (!organizationName) throw new Error("Organization name is required for leaders.");
+        
+        const orgRef = await addDoc(collection(db, 'organizations'), {
+            name: organizationName,
+            leaderUid: firebaseUser.uid,
+            leaderName: name,
+            createdAt: serverTimestamp()
+        });
+
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
+        await setDoc(userDocRef, {
+            ...initialData,
+            name: name,
+            email: email,
+            isLeader: true,
+            organizationId: orgRef.id,
+        });
 
     } else {
         const avatarUrl = getRandomAvatar();
         await updateProfile(firebaseUser, {
-            displayName: name,
             photoURL: avatarUrl,
         });
 
