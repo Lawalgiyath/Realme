@@ -1,36 +1,38 @@
-
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if a user is an organization leader
-    function isOrgLeader(orgId) {
-      return exists(/databases/$(database)/documents/organizations/$(orgId)) &&
-             get(/databases/$(database)/documents/organizations/$(orgId)).data.leaderUid == request.auth.uid;
-    }
-
+    // Rules for the users collection
     match /users/{userId} {
-      // Users can only read/write their own data
-      allow read, write: if request.auth.uid == userId;
-
-      // Org leaders can read their members' data for aggregated insights
-      allow list: if isOrgLeader(request.query.where[0][2]);
+      // A user can create their own document.
+      allow create: if request.auth != null;
+      // A user can only read or update their own document.
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+      // Nobody can delete user documents.
+      allow delete: if false;
     }
 
-    match /community-stories/{storyId} {
-      // Allow authenticated users to read stories
-      allow read: if request.auth != null;
-      // Allow non-anonymous users to create stories
-      allow create: if request.auth != null && request.auth.token.firebase.sign_in_provider != 'anonymous';
-    }
-
+    // Rules for the organizations collection
     match /organizations/{orgId} {
-        // Allow any authenticated user to read (e.g., to verify a code)
-        allow read: if request.auth != null;
-        
-        // Only the designated leader can create or update their own organization document
-        allow create, update: if isOrgLeader(orgId);
+      // An authenticated user can create an organization if they are the leader.
+      allow create: if request.auth != null && request.resource.data.leaderUid == request.auth.uid;
+      // A user can read an organization's document if they are a member of it.
+      allow read: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId;
+      // Only the leader of an organization can update it.
+      allow update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId && resource.data.leaderUid == request.auth.uid;
+       // Nobody can delete organization documents from the client.
+      allow delete: if false;
     }
+
+    // Rules for community stories
+    match /community-stories/{storyId} {
+        // Anyone can read stories
+        allow read: if true;
+        // Only authenticated, non-anonymous users can create stories
+        allow create: if request.auth != null && request.auth.token.firebase.sign_in_provider != 'anonymous';
+        // Users cannot update or delete stories from the client
+        allow update, delete: if false;
+    }
+
   }
 }
