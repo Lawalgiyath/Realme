@@ -1,4 +1,3 @@
-
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
@@ -8,7 +7,7 @@ import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyC0g3g_1g2h3i4j5k6l7m8n9o0p1q2r3s",
+  apiKey: "AIzaSyA2aS3x6bhOVuw7IlapsWyGhfHyTqDpCms",
   authDomain: "realme-mdjf0.firebaseapp.com",
   projectId: "realme-mdjf0",
   storageBucket: "realme-mdjf0.appspot.com",
