@@ -14,6 +14,9 @@ export default {
         headline: ['PT Sans', 'sans-serif'],
         code: ['monospace'],
       },
+      boxShadow: {
+        'inner-strong': 'inset 0 0 0 8px hsl(var(--card)), 0 4px 15px 5px rgba(0, 0, 0, 0.2)',
+      },
       colors: {
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
@@ -97,3 +100,5 @@ export default {
   },
   plugins: [require('tailwindcss-animate')],
 } satisfies Config;
+
+    

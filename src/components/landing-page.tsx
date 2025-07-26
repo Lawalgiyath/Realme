@@ -11,6 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { useIsMobile } from '@/hooks/use-mobile';
+
 
 // Bubble Pop Game Component
 const BubblePopGame = () => {
@@ -36,7 +38,7 @@ const BubblePopGame = () => {
     useEffect(() => {
         const moveInterval = setInterval(() => {
             setBubbles(prev => prev.map(b => ({ ...b, y: b.y - 1 })).filter(b => b.y > -20));
-        }, 50);
+        }, 80); // Slower interval for bubble movement
 
         return () => clearInterval(moveInterval);
     }, []);
@@ -104,10 +106,27 @@ const features = [
 
 const InteractiveFeatureCards = () => {
     const [activeIndex, setActiveIndex] = useState(0);
+    const isMobile = useIsMobile();
 
     const handleCardClick = (index: number) => {
         setActiveIndex(index);
     };
+    
+    if (isMobile) {
+        return (
+            <div className="flex flex-col gap-4">
+                {features.map((feature, index) => (
+                    <Card key={feature.title} className={cn("text-foreground p-6 rounded-lg", index === activeIndex ? "bg-secondary" : "bg-secondary/50")}>
+                        <div className="flex items-center gap-4 mb-2">
+                             <feature.icon className="w-6 h-6 text-primary" />
+                             <h3 className="text-lg font-bold">{feature.title}</h3>
+                        </div>
+                        <p className="text-muted-foreground">{feature.description}</p>
+                    </Card>
+                ))}
+            </div>
+        )
+    }
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
@@ -219,30 +238,34 @@ export default function LandingPage() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative py-20 md:py-32 text-center container mx-auto px-4 sm:px-6 lg:px-8 overflow-hidden">
-            <div className="absolute inset-0 -z-10">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/30 rounded-full filter blur-3xl opacity-50 animate-pulse"></div>
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/4 -translate-y-1/4 w-80 h-80 bg-secondary/30 rounded-full filter blur-3xl opacity-50 animation-delay-2000 animate-pulse"></div>
-            </div>
-            <div className="max-w-4xl mx-auto">
-                <h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight">
-                    Be kind to your mind.
-                </h2>
-                <p className="mt-6 text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto">
-                    Realme is your personal AI wellness coach. Get personalized support, track your progress, and build healthier habits for a happier you.
-                </p>
-                <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-                    <Button size="lg" onClick={() => router.push('/signup')}>
-                        Start as an Individual <ArrowRight className="ml-2" />
-                    </Button>
-                    <Button size="lg" variant="outline" onClick={() => router.push('/organization/signup')}>
-                        Register an Organization
-                    </Button>
+        <section className="relative py-16 md:py-24 text-center container mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center text-left">
+                <div className="max-w-xl">
+                    <h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight">
+                        Be kind to your mind.
+                    </h2>
+                    <p className="mt-6 text-lg sm:text-xl text-muted-foreground">
+                        Realme is your personal AI wellness coach. Get personalized support, track your progress, and build healthier habits for a happier you.
+                    </p>
+                    <div className="mt-8 flex flex-col sm:flex-row items-center justify-start gap-4">
+                        <Button size="lg" onClick={() => router.push('/signup')}>
+                            Start as an Individual <ArrowRight className="ml-2" />
+                        </Button>
+                        <Button size="lg" variant="outline" onClick={() => router.push('/organization/signup')}>
+                            Register an Organization
+                        </Button>
+                    </div>
+                </div>
+                 <div className="relative aspect-square max-w-lg mx-auto lg:mx-0 shadow-inner-strong rounded-2xl p-2">
+                    <Image
+                        src="https://i.ibb.co/DPSKSxS2/pexels-sam-jhay-316274033-14024358.jpg"
+                        alt="A person meditating peacefully outdoors"
+                        width={800}
+                        height={800}
+                        className="rounded-xl w-full h-full object-cover"
+                    />
                 </div>
             </div>
-             <div className="absolute bottom-0 left-0 right-0 h-32" style={{
-                background: 'linear-gradient(to top, hsl(var(--background)), transparent)'
-            }}></div>
         </section>
 
         {/* Features Section */}
@@ -347,3 +370,5 @@ const TestimonialCard = ({ text, name, icon: Icon }: { text: string, name: strin
     </CardContent>
   </Card>
 );
+
+    
