@@ -5,16 +5,14 @@ import React, { useState, useEffect } from 'react';
 import {
   Briefcase,
   LogOut,
-  User,
   PanelLeft,
   Copy,
   Users,
-  BarChart,
-  ClipboardList,
   Smile,
   Leaf,
   Star,
   AreaChart,
+  ClipboardList,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -39,19 +37,20 @@ export default function OrganizationDashboard() {
   const { user, logout, loading: appLoading } = useApp();
   const router = useRouter();
   const { toast } = useToast();
-  const [organization, setOrganization] = useState<{id: string, name: string} | null>(null);
+  const [organizationName, setOrganizationName] = useState<string>('');
   const [insights, setInsights] = useState<OrganizationInsightsOutput | null>(null);
   const [loadingInsights, setLoadingInsights] = useState(true);
+  const [memberCount, setMemberCount] = useState(0);
 
   useEffect(() => {
-    if (appLoading) return; // Wait for the main app loading to finish
+    if (appLoading) return;
 
     if (!user) {
       router.replace('/organization/login');
       return;
     }
     if (!user.isLeader) {
-      router.replace('/dashboard'); // It's a normal user, send them to their dashboard
+      router.replace('/dashboard');
       return;
     }
 
@@ -64,26 +63,20 @@ export default function OrganizationDashboard() {
             return;
         }
 
-        const orgDocRef = doc(db, "organizations", user.organizationId);
-        const orgDocSnap = await getDoc(orgDocRef);
-        
-        if (!orgDocSnap.exists()) {
-            console.error("Organization not found for leader:", user.uid);
-            toast({ variant: 'destructive', title: "Error", description: "Could not find your organization." });
-            setLoadingInsights(false);
-            return;
-        }
+        // The org name is on the leader's user doc.
+        setOrganizationName(user.organizationName || 'Your Organization');
 
-        const orgData = { id: orgDocSnap.id, ...orgDocSnap.data() } as {id: string, name: string};
-        setOrganization(orgData);
-
-        // Fetch user data for the org
-        const usersQuery = query(collection(db, "users"), where("organizationId", "==", orgDocSnap.id));
+        // Fetch user data for the org to generate insights
+        const usersQuery = query(collection(db, "users"), where("organizationId", "==", user.organizationId));
         const usersSnapshot = await getDocs(usersQuery);
-        const memberData = usersSnapshot.docs.map(doc => {
+        const members = usersSnapshot.docs.map(doc => {
             const { name, email, ...rest } = doc.data(); // Strip PII
             return rest;
         });
+
+        // Exclude the leader from member count and insights data
+        const memberData = members.filter(m => !m.isLeader);
+        setMemberCount(memberData.length);
 
         if (memberData.length === 0) {
              setInsights(null);
@@ -93,7 +86,7 @@ export default function OrganizationDashboard() {
 
         try {
             const result = await organizationInsights({
-                organizationId: orgData.id,
+                organizationId: user.organizationId,
                 memberData: JSON.stringify(memberData)
             });
             setInsights(result);
@@ -118,8 +111,8 @@ export default function OrganizationDashboard() {
   };
 
   const copyOrgCode = () => {
-    if (organization) {
-        navigator.clipboard.writeText(organization.id);
+    if (user?.organizationId) {
+        navigator.clipboard.writeText(user.organizationId);
         toast({
             title: "Copied to Clipboard",
             description: "You can now share the organization code with your members.",
@@ -127,7 +120,7 @@ export default function OrganizationDashboard() {
     }
   }
 
-   if (appLoading || !user || !organization) {
+   if (appLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -146,7 +139,7 @@ export default function OrganizationDashboard() {
                     <h1 className="text-xl font-semibold font-headline">Org Dashboard</h1>
                 </div>
                 <div className="p-4">
-                    <p className="text-sm font-semibold text-foreground">{organization?.name}</p>
+                    <p className="text-sm font-semibold text-foreground">{organizationName}</p>
                     <p className="text-xs text-muted-foreground">Welcome, {user?.name?.split(' ')[0]}</p>
                 </div>
             </nav>
@@ -188,19 +181,22 @@ export default function OrganizationDashboard() {
             </header>
 
             <div className="p-4 md:p-8 space-y-8">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Onboard Your Members</CardTitle>
-                        <CardDescription>Share this code with your members so they can join your organization on signup.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                        <p className="text-2xl font-mono p-3 bg-secondary rounded-md text-primary font-bold tracking-widest">{organization?.id}</p>
-                        <Button onClick={copyOrgCode}>
-                            <Copy className="mr-2 h-4 w-4" />
-                            Copy Code
-                        </Button>
-                    </CardContent>
-                </Card>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <Card className="lg:col-span-2">
+                        <CardHeader>
+                            <CardTitle>Onboard Your Members</CardTitle>
+                            <CardDescription>Share this code with your members so they can join your organization on signup.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                            <p className="text-2xl font-mono p-3 bg-secondary rounded-md text-primary font-bold tracking-widest">{user.organizationId}</p>
+                            <Button onClick={copyOrgCode}>
+                                <Copy className="mr-2 h-4 w-4" />
+                                Copy Code
+                            </Button>
+                        </CardContent>
+                    </Card>
+                     <InfoCard title="Active Members" icon={Users} content={`${memberCount}`} isMetric />
+                </div>
 
                 {loadingInsights ? (
                     <div className="flex justify-center items-center py-16 text-center">
@@ -236,7 +232,7 @@ export default function OrganizationDashboard() {
   );
 }
 
-function InfoCard({ title, content, icon: Icon, className }: { title: string, content?: string, icon: React.ElementType, className?: string }) {
+function InfoCard({ title, content, icon: Icon, className, isMetric = false }: { title: string, content?: string, icon: React.ElementType, className?: string, isMetric?: boolean }) {
     const contentItems = content?.split('\n').filter(item => item.trim().length > 0);
 
     return (
@@ -249,6 +245,8 @@ function InfoCard({ title, content, icon: Icon, className }: { title: string, co
                 <div className="text-sm text-foreground">
                     {!content ? (
                         <p className="text-muted-foreground">No data yet.</p>
+                    ) : isMetric ? (
+                        <p className="text-2xl font-bold text-primary">{content}</p>
                     ) : contentItems && contentItems.length > 1 && content.includes('- ') ? (
                         <ul className="space-y-1 mt-2">
                             {contentItems.map((item, index) => (
