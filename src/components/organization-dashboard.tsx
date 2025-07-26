@@ -41,16 +41,23 @@ export default function OrganizationDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (appLoading) return;
-    if (!user) {
-        router.replace('/organization/login');
-        return;
-    }
-    if (!user.isLeader) {
-        router.replace('/dashboard');
-        return;
+    if (appLoading) {
+      return; // Wait for the app context to finish loading user data.
     }
 
+    if (!user) {
+      // If there's no user after loading, redirect to login.
+      router.replace('/organization/login');
+      return;
+    }
+
+    if (!user.isLeader) {
+      // If the user is logged in but is not a leader, redirect them.
+      router.replace('/dashboard');
+      return;
+    }
+
+    // If we have a valid leader, proceed to fetch organization data.
     const fetchOrgData = async () => {
         setLoading(true);
         const q = query(collection(db, "organizations"), where("leaderUid", "==", user.uid));
@@ -77,7 +84,7 @@ export default function OrganizationDashboard() {
         const memberData = usersSnapshot.docs.map(doc => doc.data());
 
         if (memberData.length === 0) {
-             setInsights(null); // Set to null instead of placeholder data
+             setInsights(null);
              setLoading(false);
              return;
         }
@@ -98,8 +105,7 @@ export default function OrganizationDashboard() {
         } finally {
             setLoading(false);
         }
-
-    }
+    };
 
     fetchOrgData();
   }, [user, appLoading, router, toast]);
@@ -119,7 +125,7 @@ export default function OrganizationDashboard() {
     }
   }
 
-   if (appLoading || (!organization && loading) || !user) {
+   if (appLoading || !user || !user.isLeader) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
