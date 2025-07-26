@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 import { useApp } from "@/context/app-context"
-import { HeartPulse, Loader2, User } from "lucide-react"
+import { HeartPulse, Loader2, User, Briefcase } from "lucide-react"
 import { Separator } from "./ui/separator"
 
 const formSchema = z.object({
@@ -35,7 +35,7 @@ const formSchema = z.object({
 })
 
 const GoogleIcon = () => (
-    <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
+    <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24" aria-hidden="true">
         <path fill="#4285F4" d="M21.35 11.1h-9.1v3.8h5.2a4.4 4.4 0 01-1.9 2.9v2.5h3.2a9.4 9.4 0 002.8-7.2z"></path>
         <path fill="#34A853" d="M12.25 22c2.5 0 4.6-.8 6.1-2.2l-3.2-2.5a5.4 5.4 0 01-2.9 1c-2.3 0-4.2-1.6-4.8-3.7H4.2v2.6A9.9 9.9 0 0012.25 22z"></path>
         <path fill="#FBBC05" d="M7.45 14.1a5.4 5.4 0 010-3.2V8.3h-3.2a10 10 0 000 7.4l3.2-2.6z"></path>
@@ -155,7 +155,7 @@ export function LoginForm() {
                     {googleLoading ? "Signing in..." : "Continue with Google"}
                 </Button>
                  <Button variant="secondary" className="w-full" onClick={handleAnonymousSignIn} disabled={anonymousLoading || loading}>
-                    {anonymousLoading ? <Loader2 className="animate-spin" /> : <User />}
+                    {anonymousLoading ? <Loader2 className="animate-spin mr-2" /> : <User className="mr-2 h-4 w-4" />}
                     {anonymousLoading ? "Entering..." : "Continue as Guest"}
                 </Button>
             </div>
@@ -205,6 +205,13 @@ export function LoginForm() {
                 <Link href="/signup" className="underline text-primary">
                     Sign up
                 </Link>
+            </div>
+             <Separator className="my-4" />
+             <div className="text-center">
+                 <Button variant="ghost" onClick={() => router.push('/organization/login')}>
+                    <Briefcase className="mr-2 h-4 w-4" />
+                    Organization Leader Login
+                </Button>
             </div>
         </CardContent>
     </Card>

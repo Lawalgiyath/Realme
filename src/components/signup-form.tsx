@@ -35,10 +35,11 @@ const formSchema = z.object({
   password: z.string().min(8, {
     message: "Password must be at least 8 characters.",
   }),
+  organizationCode: z.string().optional(),
 })
 
 const GoogleIcon = () => (
-    <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
+    <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24" aria-hidden="true">
         <path fill="#4285F4" d="M21.35 11.1h-9.1v3.8h5.2a4.4 4.4 0 01-1.9 2.9v2.5h3.2a9.4 9.4 0 002.8-7.2z"></path>
         <path fill="#34A853" d="M12.25 22c2.5 0 4.6-.8 6.1-2.2l-3.2-2.5a5.4 5.4 0 01-2.9 1c-2.3 0-4.2-1.6-4.8-3.7H4.2v2.6A9.9 9.9 0 0012.25 22z"></path>
         <path fill="#FBBC05" d="M7.45 14.1a5.4 5.4 0 010-3.2V8.3h-3.2a10 10 0 000 7.4l3.2-2.6z"></path>
@@ -59,13 +60,14 @@ export function SignupForm() {
       name: "",
       email: "",
       password: "",
+      organizationCode: "",
     },
   })
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
     try {
-        await signup(values.name, values.email, values.password);
+        await signup(values.name, values.email, values.password, false, values.organizationCode);
         toast({
             title: "Account Created!",
             description: "You have successfully signed up. Taking you to the onboarding...",
@@ -115,6 +117,8 @@ export function SignupForm() {
             default:
                 description = "Could not create your account. Please try again."
         }
+    } else if (error instanceof Error && error.message.startsWith('ORGANIZATION_CODE_INVALID')) {
+        description = "The organization code you entered is invalid. Please check the code and try again."
     }
     toast({
         variant: "destructive",
@@ -124,7 +128,7 @@ export function SignupForm() {
   }
 
   return (
-    <Card className="w-full max-w-sm">
+    <Card className="w-full max-w-lg">
         <CardHeader className="text-center">
              <div className="flex justify-center items-center gap-2 mb-4">
                 <div className="p-1.5 rounded-lg bg-primary">
@@ -145,7 +149,7 @@ export function SignupForm() {
             
             <div className="flex items-center my-6">
                 <div className="flex-grow border-t border-muted"></div>
-                <span className="mx-4 text-xs text-muted-foreground">OR</span>
+                <span className="mx-4 text-xs text-muted-foreground">OR SIGN UP WITH EMAIL</span>
                 <div className="flex-grow border-t border-muted"></div>
             </div>
             <Form {...form}>
@@ -163,35 +167,51 @@ export function SignupForm() {
                             </FormItem>
                         )}
                     />
-                    <FormField
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="email"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Email</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="name@example.com" {...field} disabled={loading || googleLoading} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="password"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Password</FormLabel>
+                                <FormControl>
+                                    <Input type="password" placeholder="••••••••" {...field} disabled={loading || googleLoading} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+                     <FormField
                         control={form.control}
-                        name="email"
+                        name="organizationCode"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel>Email</FormLabel>
+                            <FormLabel>Organization Code</FormLabel>
                             <FormControl>
-                                <Input placeholder="name@example.com" {...field} disabled={loading || googleLoading} />
+                                <Input placeholder="Enter code if you have one" {...field} disabled={loading || googleLoading} />
                             </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="password"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Password</FormLabel>
-                            <FormControl>
-                                <Input type="password" placeholder="••••••••" {...field} disabled={loading || googleLoading} />
-                            </FormControl>
+                            <FormDescription>If you're part of a company or university, enter the code they provided.</FormDescription>
                             <FormMessage />
                             </FormItem>
                         )}
                     />
                     <Button type="submit" className="w-full" disabled={loading || googleLoading}>
                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {loading ? 'Creating Account...' : 'Sign Up with Email'}
+                        {loading ? 'Creating Account...' : 'Sign Up'}
                     </Button>
                 </form>
             </Form>

@@ -6,7 +6,7 @@ import type { MentalHealthAssessmentOutput } from '@/ai/flows/mental-health-asse
 import React, { createContext, useState, useContext, ReactNode, useMemo, useEffect, useCallback } from 'react';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, type User as FirebaseUser, GoogleAuthProvider, signInWithPopup, signInAnonymously } from 'firebase/auth';
-import { doc, setDoc, onSnapshot, getDoc } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, getDoc, collection, addDoc, serverTimestamp, getDocs, query, where, limit } from 'firebase/firestore';
 import { DailyPlannerOutput } from '@/ai/flows/daily-planner-flow';
 
 export interface Mood {
@@ -20,12 +20,23 @@ export interface Goal {
   completed: boolean;
 }
 
+export interface Organization {
+  id: string;
+  name: string;
+  sector: string;
+  leaderUid: string;
+  createdAt: any;
+}
+
 export interface User {
   uid: string;
   name: string | null;
   email: string | null;
   avatar: string | null;
   isAnonymous: boolean;
+  isLeader: boolean;
+  organizationId?: string;
+  organizationName?: string;
 }
 
 export type AchievementKey = 'firstGoal' | 'assessmentComplete' | 'firstJournal' | 'contentGenerated' | 'fiveGoalsDone' | 'moodWeek' | 'firstResource' | 'tenGoalsDone' | 'worryJarUse' | 'moodMonth';
@@ -59,6 +70,9 @@ interface UserData {
     name?: string;
     email?: string;
     avatar?: string;
+    isLeader?: boolean;
+    organizationId?: string;
+    organizationName?: string;
 }
 
 
@@ -73,8 +87,9 @@ interface AppContextType {
   personalizedContent: PersonalizedContentOutput | null;
   setPersonalizedContent: (content: PersonalizedContentOutput | null) => void;
   user: User | null;
-  signup: (name: string, email: string, password: string) => Promise<FirebaseUser>;
-  login: (email: string, password: string) => Promise<FirebaseUser>;
+  organization: Organization | null;
+  signup: (name: string, email: string, password: string, isLeader?: boolean, organizationCode?: string, organizationName?: string, sector?: string) => Promise<FirebaseUser>;
+  login: (email: string, password: string, isLeader?: boolean) => Promise<FirebaseUser>;
   loginWithGoogle: () => Promise<void>;
   loginAnonymously: () => Promise<FirebaseUser>;
   logout: () => Promise<void>;
@@ -128,6 +143,7 @@ function getRandomAvatar() {
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   
   const [userData, setUserData] = useState<UserData>(initialData);
@@ -141,6 +157,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         const unsubscribeFirestore = onSnapshot(userDocRef, (docSnap) => {
              if (docSnap.exists()) {
                 const data = docSnap.data() as UserData;
+                
                 if (data.dailyPlanTimestamp) {
                     const planDate = new Date(data.dailyPlanTimestamp);
                     const now = new Date();
@@ -154,12 +171,26 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
                  const currentUser: User = {
                     uid: firebaseUser.uid,
-                    name: firebaseUser.displayName || (firebaseUser.isAnonymous ? "Guest" : "User"),
+                    name: firebaseUser.displayName || (firebaseUser.isAnonymous ? "Guest" : data.name || "User"),
                     email: firebaseUser.email,
-                    avatar: firebaseUser.photoURL,
+                    avatar: firebaseUser.photoURL || data.avatar,
                     isAnonymous: firebaseUser.isAnonymous,
+                    isLeader: data.isLeader || false,
+                    organizationId: data.organizationId,
+                    organizationName: data.organizationName,
                 };
                 setUser(currentUser);
+
+                if (currentUser.isLeader && currentUser.organizationId) {
+                   const orgDocRef = doc(db, 'organizations', currentUser.organizationId);
+                   onSnapshot(orgDocRef, (orgSnap) => {
+                       if (orgSnap.exists()) {
+                           setOrganization({ id: orgSnap.id, ...orgSnap.data() } as Organization);
+                       }
+                   });
+                } else {
+                    setOrganization(null);
+                }
             }
              setLoading(false);
         }, (error) => {
@@ -170,6 +201,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         return () => unsubscribeFirestore();
       } else {
         setUser(null);
+        setOrganization(null);
         setUserData(initialData);
         setLoading(false);
       }
@@ -234,28 +266,63 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   }, [user, userData.interactions, updateUserData]);
 
 
-  const signup = async (name: string, email: string, password: string): Promise<FirebaseUser> => {
+  const signup = async (name: string, email: string, password: string, isLeader = false, organizationCode?: string, organizationName?: string, sector?: string): Promise<FirebaseUser> => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const { user: firebaseUser } = userCredential;
-    const userDocRef = doc(db, 'users', firebaseUser.uid);
-    await updateProfile(firebaseUser, { displayName: name });
 
+    await updateProfile(firebaseUser, { displayName: name });
     const avatarUrl = getRandomAvatar();
     await updateProfile(firebaseUser, { photoURL: avatarUrl });
     
+    const userDocRef = doc(db, 'users', firebaseUser.uid);
     const userDataToSet: UserData = {
         ...initialData,
         name: name,
         email: email,
         avatar: avatarUrl,
+        isLeader,
     };
+
+    if (isLeader && organizationName && sector) {
+        const orgsRef = collection(db, 'organizations');
+        const newOrgRef = await addDoc(orgsRef, {
+            name: organizationName,
+            sector,
+            leaderUid: firebaseUser.uid,
+            createdAt: serverTimestamp(),
+        });
+        userDataToSet.organizationId = newOrgRef.id;
+        userDataToSet.organizationName = organizationName;
+    } else if (organizationCode) {
+        const orgQuery = query(collection(db, 'organizations'), where('__name__', '==', organizationCode), limit(1));
+        const orgSnapshot = await getDocs(orgQuery);
+        if (orgSnapshot.empty) {
+            await firebaseUser.delete();
+            throw new Error('ORGANIZATION_CODE_INVALID');
+        }
+        const orgDoc = orgSnapshot.docs[0];
+        userDataToSet.organizationId = orgDoc.id;
+        userDataToSet.organizationName = orgDoc.data().name;
+    }
+
     await setDoc(userDocRef, userDataToSet);
-    
     return firebaseUser;
   };
 
-  const login = async (email: string, password: string): Promise<FirebaseUser> => {
+  const login = async (email: string, password: string, isLeader = false): Promise<FirebaseUser> => {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userDocRef = doc(db, 'users', userCredential.user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+          throw new Error("User data not found.");
+      }
+
+      if (isLeader && !userDoc.data().isLeader) {
+          await signOut(auth);
+          throw new Error("NOT_A_LEADER");
+      }
+
       return userCredential.user;
   };
 
@@ -270,6 +337,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         name: result.user.displayName,
         email: result.user.email,
         avatar: result.user.photoURL,
+        isLeader: false,
       });
     }
   };
@@ -291,6 +359,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const value: AppContextType = useMemo(() => ({
     user,
+    organization,
     loading,
     goals: userData.goals,
     moods: userData.moods,
@@ -318,7 +387,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     addInteraction,
     unlockedAchievement,
     clearUnlockedAchievement,
-  }), [user, loading, userData, addAchievement, addInteraction, unlockedAchievement, updateUserData]);
+  }), [user, organization, loading, userData, addAchievement, addInteraction, unlockedAchievement, updateUserData]);
 
   return (
     <AppContext.Provider value={value}>

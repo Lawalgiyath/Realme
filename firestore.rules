@@ -1,38 +1,21 @@
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Rules for the users collection
+    // Users can create their own profile, and can only read/update their own data.
     match /users/{userId} {
-      // A user can create their own document.
-      allow create: if request.auth != null;
-      // A user can only read or update their own document.
-      allow read, update: if request.auth != null && request.auth.uid == userId;
-      // Nobody can delete user documents.
-      allow delete: if false;
+      allow read, update: if request.auth.uid == userId;
+      allow create: if request.auth.uid != null;
     }
 
-    // Rules for the organizations collection
+    // Organizations can be created by any authenticated user (the leader).
+    // An organization's data can be read by any authenticated user who is part of that organization.
     match /organizations/{orgId} {
-      // An authenticated user can create an organization if they are the leader.
-      allow create: if request.auth != null && request.resource.data.leaderUid == request.auth.uid;
-      // A user can read an organization's document if they are a member of it.
-      allow read: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId;
-      // Only the leader of an organization can update it.
-      allow update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId && resource.data.leaderUid == request.auth.uid;
-       // Nobody can delete organization documents from the client.
-      allow delete: if false;
+      allow read: if request.auth.uid != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId;
+      allow create: if request.auth.uid != null && request.resource.data.leaderUid == request.auth.uid;
+      allow update: if request.auth.uid == resource.data.leaderUid;
     }
-
-    // Rules for community stories
-    match /community-stories/{storyId} {
-        // Anyone can read stories
-        allow read: if true;
-        // Only authenticated, non-anonymous users can create stories
-        allow create: if request.auth != null && request.auth.token.firebase.sign_in_provider != 'anonymous';
-        // Users cannot update or delete stories from the client
-        allow update, delete: if false;
-    }
-
   }
 }

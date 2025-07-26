@@ -1,6 +1,6 @@
 
 "use client";
-import { HeartPulse, Rocket, Sparkles, BrainCircuit, BarChart, Users, BookHeart, ShieldCheck, Sun, Moon, ArrowRight, MousePointerClick, Gamepad2, Rabbit, Cat, Dog, Bird, ChevronDown } from 'lucide-react';
+import { HeartPulse, Rocket, Sparkles, BrainCircuit, BarChart, Users, BookHeart, ShieldCheck, Sun, Moon, ArrowRight, MousePointerClick, Gamepad2, Rabbit, Cat, Dog, Bird, ChevronDown, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/app-context';
@@ -246,7 +246,11 @@ export default function LandingPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.replace('/dashboard');
+        if(user.isLeader) {
+            router.replace('/organization/dashboard');
+        } else {
+            router.replace('/dashboard');
+        }
     }
   }, [user, loading, router]);
   
@@ -268,6 +272,7 @@ export default function LandingPage() {
             <h1 className="text-2xl font-bold font-headline">Realme</h1>
         </div>
         <nav className="flex items-center gap-2">
+            <Button variant="ghost" onClick={() => router.push('/organization/login')}>For Organizations</Button>
             <Button variant="ghost" onClick={() => router.push('/login')}>Log In</Button>
             <Button onClick={() => router.push('/signup')}>Get Started</Button>
         </nav>
@@ -318,17 +323,33 @@ export default function LandingPage() {
             </div>
         </section>
 
-        {/* Game Section */}
+        {/* Organization CTA */}
         <section className="py-20 md:py-28 bg-secondary/30">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="text-center max-w-3xl mx-auto">
-                     <h2 className="text-3xl md:text-4xl font-bold">Take a Mindful Moment</h2>
-                    <p className="mt-4 text-lg text-muted-foreground">
-                        Feeling overwhelmed? Take a short break with a simple, calming game to reset your focus.
-                    </p>
-                </div>
-                 <div className="mt-16 max-w-4xl mx-auto">
-                    <BubblePopGame />
+                <div className="grid lg:grid-cols-2 gap-12 items-center">
+                    <div className="max-w-md">
+                        <div className="p-3 rounded-full bg-primary/10 border-2 border-primary/20 w-fit mb-4">
+                            <Briefcase className="h-8 w-8 text-primary" />
+                        </div>
+                        <h2 className="text-3xl md:text-4xl font-bold">Realme for Teams</h2>
+                        <p className="mt-4 text-lg text-muted-foreground">
+                            Support your team's mental health with anonymized wellness insights, engagement tracking, and AI-powered recommendations to foster a healthier, more productive work environment.
+                        </p>
+                        <div className="mt-8 flex gap-4">
+                            <Button size="lg" onClick={() => router.push('/organization/signup')}>
+                                Get Started for Your Team
+                            </Button>
+                        </div>
+                    </div>
+                    <div>
+                        <Image
+                            src="https://i.ibb.co/d5Mbrzq/pexels-mikael-blomkvist-1709003.jpg"
+                            alt="A team collaborating in an office"
+                            width={600}
+                            height={400}
+                            className="rounded-lg shadow-lg"
+                        />
+                    </div>
                 </div>
             </div>
         </section>
