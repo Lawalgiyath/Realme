@@ -38,8 +38,6 @@ export default function AiCoach() {
   const recognitionRef = useRef<any>(null);
   const activeFieldRef = useRef<ActiveField>('activities');
   
-  const finalTranscriptRef = useRef('');
-  
   const { addInteraction, dailyPlan, setDailyPlan } = useApp();
 
   const form = useForm<PlannerFormValues>({
@@ -53,8 +51,10 @@ export default function AiCoach() {
 
   const { setValue, getValues, setFocus } = form;
 
-  const handleTextCorrection = useCallback(async (field: ActiveField, text: string) => {
-    if (!text.trim()) return;
+  const handleTextCorrection = useCallback(async (field: ActiveField) => {
+    const text = getValues(field);
+    if (!text || !text.trim()) return;
+
     setIsCorrecting(true);
     try {
       const response = await correctText({ rawText: text });
@@ -66,11 +66,10 @@ export default function AiCoach() {
         title: 'Correction Failed',
         description: 'Could not polish the transcribed text. Please review it manually.',
       });
-      setValue(field, text, { shouldValidate: true });
     } finally {
       setIsCorrecting(false);
     }
-  }, [setValue, toast]);
+  }, [getValues, setValue, toast]);
 
   const handleToggleListening = useCallback(async (field: ActiveField) => {
     if (isListening) {
@@ -92,66 +91,55 @@ export default function AiCoach() {
         
         activeFieldRef.current = field;
         setFocus(field);
-
-        finalTranscriptRef.current = getValues(field) ? getValues(field) + ' ' : '';
         
         recognitionRef.current?.start();
-        setIsListening(true);
+
     } catch (err: any) {
         console.error('Error getting user media', err);
+        const description = err.name === 'NotFoundError' 
+            ? 'No microphone was found on your device. Please connect a microphone and try again.'
+            : 'Could not access the microphone. Please check your browser permissions.';
         
-        if (err.name === 'NotFoundError') {
-             toast({
-                variant: 'destructive',
-                title: 'Microphone Not Found',
-                description: 'No microphone was found on your device. Please connect a microphone and try again.',
-            });
-        } else {
-            toast({
-                variant: 'destructive',
-                title: 'Microphone Access Required',
-                description: 'Could not access the microphone. Please check your browser permissions.',
-            });
-        }
+        toast({
+            variant: 'destructive',
+            title: 'Microphone Access Required',
+            description,
+        });
     }
-  }, [getValues, setFocus, toast, isListening]);
+  }, [setFocus, toast, isListening]);
 
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       setIsSpeechSupported(true);
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = true;
-      recognitionRef.current.interimResults = true;
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
 
-      recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
-        let interimTranscript = '';
-        let finalTranscript = '';
-
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript + ' ';
-          } else {
-            interimTranscript += event.results[i][0].transcript;
-          }
-        }
-        
-        const currentField = activeFieldRef.current;
-        const baseValue = finalTranscriptRef.current;
-
-        if(finalTranscript.length > 0) {
-            finalTranscriptRef.current = baseValue + finalTranscript;
-        }
-        
-        setValue(currentField, finalTranscriptRef.current + interimTranscript, { shouldValidate: false });
+      recognition.onstart = () => {
+          setIsListening(true);
       };
 
-      recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
-        if (event.error === 'no-speech') {
-            setIsListening(false);
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        let final_transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            final_transcript += event.results[i][0].transcript;
+          }
+        }
+        if (final_transcript) {
+            const currentField = activeFieldRef.current;
+            const currentValue = getValues(currentField);
+            setValue(currentField, (currentValue ? currentValue + ' ' : '') + final_transcript);
+        }
+      };
+
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+        if (event.error === 'no-speech' || event.error === 'audio-capture') {
+            // These errors often happen on mobile when the mic times out.
+            // We can ignore them and just let the `onend` handle `setIsListening(false)`.
             return;
         }
-
         console.error('Speech recognition error', event.error);
          if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
             toast({
@@ -160,29 +148,24 @@ export default function AiCoach() {
                 description: 'Please enable microphone permissions in your browser settings to use voice input.',
             });
         }
-        setIsListening(false);
       };
       
-      recognitionRef.current.onend = () => {
+      recognition.onend = () => {
           setIsListening(false);
-          const finalTranscript = finalTranscriptRef.current.trim();
-          const stoppedField = activeFieldRef.current;
-                    
-          if(finalTranscript){
-              handleTextCorrection(stoppedField, finalTranscript);
-          }
+          handleTextCorrection(activeFieldRef.current);
+      };
+      
+      recognitionRef.current = recognition;
 
-          // Auto-advance logic
-          if (stoppedField === 'activities' && !getValues('mealTarget')) {
-              handleToggleListening('mealTarget');
-          } else if (stoppedField === 'mealTarget' && !getValues('dietaryRestrictions')) {
-              handleToggleListening('dietaryRestrictions');
-          }
-      }
     } else {
         setIsSpeechSupported(false);
     }
-  }, [setValue, toast, getValues, handleTextCorrection, handleToggleListening]);
+    
+    return () => {
+        recognitionRef.current?.abort();
+    };
+
+  }, [setValue, toast, getValues, handleTextCorrection]);
 
   async function onSubmit(data: PlannerFormValues) {
     setLoading(true);
@@ -333,7 +316,7 @@ export default function AiCoach() {
                                 <AlertCircle className="h-4 w-4" />
                                 <AlertTitle>Voice Input Not Supported</AlertTitle>
                                 <AlertDescription>
-                                    Your browser does not support the Web Speech API, which is common on mobile devices. Please type your entries manually.
+                                    Your browser does not support the Web Speech API. Please type your entries manually.
                                 </AlertDescription>
                             </Alert>
                         )}

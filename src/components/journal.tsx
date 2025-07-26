@@ -40,30 +40,27 @@ export default function Journal() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       setIsSpeechSupported(true);
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = true;
-      recognitionRef.current.interimResults = true;
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
 
-      let finalTranscript = '';
-
-      recognitionRef.current.onstart = () => {
-          finalTranscript = entry ? entry + ' ' : '';
-      }
-
-      recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
-        let interimTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalTranscript += transcript + ' ';
-          } else {
-            interimTranscript += transcript;
-          }
-        }
-        setEntry(finalTranscript + interimTranscript);
+      recognition.onstart = () => {
+        setIsListening(true);
       };
 
-      recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        let final_transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            final_transcript += event.results[i][0].transcript;
+          }
+        }
+        if (final_transcript) {
+          setEntry(prev => (prev ? prev + ' ' : '') + final_transcript);
+        }
+      };
+
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
         console.error('Speech recognition error', event.error);
         if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
             toast({
@@ -75,49 +72,42 @@ export default function Journal() {
         setIsListening(false);
       };
       
-      recognitionRef.current.onend = () => {
+      recognition.onend = () => {
           setIsListening(false);
       }
+      
+      recognitionRef.current = recognition;
     } else {
         setIsSpeechSupported(false);
     }
-  }, [toast, entry]);
+
+    return () => {
+        recognitionRef.current?.abort();
+    };
+  }, [toast]);
   
   const handleToggleListening = async () => {
-    if (!recognitionRef.current) {
-        toast({
-            variant: 'destructive',
-            title: 'Browser Not Supported',
-            description: 'Your browser does not support voice recognition.',
-        });
-        return;
-    }
+    if (!recognitionRef.current) return;
 
     if (isListening) {
       recognitionRef.current?.stop();
-      setIsListening(false);
       return;
     }
 
     try {
         await navigator.mediaDevices.getUserMedia({ audio: true });
         recognitionRef.current?.start();
-        setIsListening(true);
     } catch (err: any) {
         console.error('Error getting user media', err);
-        if (err.name === 'NotFoundError') {
-             toast({
-                variant: 'destructive',
-                title: 'Microphone Not Found',
-                description: 'No microphone was found on your device. Please connect a microphone and try again.',
-            });
-        } else {
-            toast({
-                variant: 'destructive',
-                title: 'Microphone Access Required',
-                description: 'Could not access the microphone. Please check your browser permissions.',
-            });
-        }
+        const description = err.name === 'NotFoundError' 
+            ? 'No microphone was found on your device. Please connect a microphone and try again.'
+            : 'Could not access the microphone. Please check your browser permissions.';
+        
+        toast({
+            variant: 'destructive',
+            title: 'Microphone Access Required',
+            description,
+        });
     }
   };
 
@@ -234,7 +224,7 @@ export default function Journal() {
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Voice Input Not Supported</AlertTitle>
                 <AlertDescription>
-                    Your browser does not support the Web Speech API, which is common on mobile devices. Please type your entries manually.
+                    Your browser may not support the Web Speech API. If you experience issues, please type your entries manually.
                 </AlertDescription>
             </Alert>
         )}
