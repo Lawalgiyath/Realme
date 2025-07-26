@@ -82,65 +82,87 @@ const features = [
         icon: BrainCircuit,
         title: "Personalized AI Coach",
         description: "Aya learns from your mood and goals to provide adaptive recommendations and organize your day for success.",
-        color: "from-blue-500 to-cyan-400"
+        image: "https://i.ibb.co/V01HFS1D/pexels-googledeepmind-17484975.jpg"
     },
     {
         icon: BookHeart,
         title: "AI-Guided Journaling",
         description: "Share a short worry or a long reflection. Get a supportive, therapeutic perspective whenever you need it.",
-        color: "from-purple-500 to-pink-400"
+        image: "https://i.ibb.co/sdgKHRFv/pexels-jessbaileydesign-1018133.jpg"
     },
     {
         icon: BarChart,
         title: "Holistic Tracking",
         description: "Connect your mood, journaling, and goals to see the patterns that affect your well-being.",
-        color: "from-green-500 to-teal-400"
+        image: "https://i.ibb.co/FbR99vXh/pexels-ron-lach-8441260.jpg"
     },
     {
         icon: Users,
         title: "Local Resources",
         description: "Connect with verified mental health services and support groups in your local community.",
-        color: "from-yellow-500 to-orange-400"
+        image: "https://i.ibb.co/qFxPXtLK/pexels-mart-production-8078408.jpg"
     },
 ];
 
 const InteractiveFeatureCards = () => {
-    const [activeIndex, setActiveIndex] = useState(0);
-    const isMobile = useIsMobile();
+    const [cards, setCards] = useState(features);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-    const handleCardClick = (index: number) => {
-        setActiveIndex(index);
-        // Stop the interval when user interacts manually
-        if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-        }
-    };
-    
-    useEffect(() => {
-        // Start the automatic cycle
-        intervalRef.current = setInterval(() => {
-            setActiveIndex((prevIndex) => (prevIndex + 1) % features.length);
-        }, 5000); // Change card every 5 seconds
+    const cycleCards = useCallback(() => {
+        setCards(prevCards => {
+            const newCards = [...prevCards];
+            const first = newCards.shift()!;
+            newCards.push(first);
+            return newCards;
+        });
+    }, []);
 
-        // Cleanup interval on component unmount
+    useEffect(() => {
+        intervalRef.current = setInterval(cycleCards, 5000);
         return () => {
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
             }
         };
-    }, []);
+    }, [cycleCards]);
 
+    const handleCardClick = (index: number) => {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        
+        setCards(prevCards => {
+            let newCards = [...prevCards];
+            // Move the clicked card to the front (end of the array)
+            const clickedCard = newCards.splice(index, 1)[0];
+            newCards.push(clickedCard);
+            // Reorder the rest to put the new front card at the end of the original array logic.
+            const frontCardIndex = features.findIndex(f => f.title === clickedCard.title);
+            
+            const reorderedFeatures = [...features];
+            const [item] = reorderedFeatures.splice(frontCardIndex, 1);
+            reorderedFeatures.push(item);
+            
+            // This logic is simplified to just move clicked to front
+            const finalCards = [...prevCards.filter(c => c.title !== clickedCard.title), clickedCard];
+            return finalCards;
+        });
+
+    };
+    
+    const isMobile = useIsMobile();
     if (isMobile) {
         return (
             <div className="flex flex-col gap-4">
                 {features.map((feature, index) => (
-                    <Card key={feature.title} className={cn("text-foreground p-6 rounded-lg", index === activeIndex ? "bg-secondary" : "bg-secondary/50")}>
-                        <div className="flex items-center gap-4 mb-2">
-                             <feature.icon className="w-6 h-6 text-primary" />
-                             <h3 className="text-lg font-bold">{feature.title}</h3>
-                        </div>
-                        <p className="text-muted-foreground">{feature.description}</p>
+                    <Card key={feature.title} className="bg-secondary/50">
+                        <CardHeader>
+                            <div className="flex items-center gap-4 mb-2">
+                                <feature.icon className="w-6 h-6 text-primary" />
+                                <CardTitle className="text-lg">{feature.title}</CardTitle>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-muted-foreground">{feature.description}</p>
+                        </CardContent>
                     </Card>
                 ))}
             </div>
@@ -149,46 +171,70 @@ const InteractiveFeatureCards = () => {
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-            <div className="relative h-96">
-                 <AnimatePresence>
-                    {features.map((feature, index) => {
-                        const isActive = index === activeIndex;
-                        return isActive ? (
-                            <motion.div
-                                key={feature.title}
+             <div className="relative h-[450px] w-full max-w-md mx-auto">
+                <AnimatePresence>
+                    {cards.map((card, index) => {
+                        const isFrontCard = index === cards.length - 1;
+                        return (
+                             <motion.div
+                                key={card.title}
                                 className={cn(
-                                    "absolute w-full h-full p-8 rounded-2xl text-white flex flex-col justify-end shadow-2xl",
-                                    "transform-gpu bg-gradient-to-br",
-                                    feature.color
+                                    "absolute w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-card border",
+                                    "transform-gpu cursor-pointer"
                                 )}
-                                initial={{ y: 20, opacity: 0, scale: 0.95 }}
-                                animate={{ y: 0, opacity: 1, scale: 1 }}
-                                exit={{ y: -20, opacity: 0, scale: 0.95 }}
+                                initial={{ scale: 0.9, y: 30, opacity: 0 }}
+                                animate={{
+                                    scale: 1 - (cards.length - 1 - index) * 0.05,
+                                    y: (cards.length - 1 - index) * -15,
+                                    opacity: 1,
+                                    zIndex: index,
+                                }}
+                                exit={{ y: 50, opacity: 0, scale: 0.9 }}
                                 transition={{ duration: 0.5, ease: "easeInOut" }}
+                                onClick={() => isFrontCard ? cycleCards() : handleCardClick(index)}
                             >
-                                <feature.icon className="w-10 h-10 mb-4" />
-                                <h3 className="text-2xl font-bold">{feature.title}</h3>
-                                <p className="opacity-80 mt-2">{feature.description}</p>
+                                <Image
+                                    src={card.image}
+                                    alt={card.title}
+                                    layout="fill"
+                                    objectFit="cover"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                                <div className="absolute bottom-0 left-0 p-6 text-white">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-white/10 rounded-full backdrop-blur-sm">
+                                            <card.icon className="w-5 h-5"/>
+                                        </div>
+                                         <h3 className="text-xl font-bold">{card.title}</h3>
+                                    </div>
+                                    <p className="mt-2 text-white/80">{card.description}</p>
+                                </div>
                             </motion.div>
-                        ) : null;
+                        );
                     })}
                 </AnimatePresence>
             </div>
             <div className="flex flex-col gap-4">
-                {features.map((feature, index) => (
-                    <Button
-                        key={feature.title}
-                        variant={activeIndex === index ? 'secondary' : 'ghost'}
-                        onClick={() => handleCardClick(index)}
-                        className="justify-start p-6 text-left h-auto"
-                    >
-                        <feature.icon className="w-6 h-6 mr-4 text-primary" />
-                        <div>
-                            <p className="font-bold text-base">{feature.title}</p>
-                            <p className="text-sm text-muted-foreground">Click to learn more</p>
-                        </div>
-                    </Button>
-                ))}
+                {features.map((feature) => {
+                    const isActive = cards[cards.length - 1].title === feature.title;
+                    return (
+                        <Button
+                            key={feature.title}
+                            variant={isActive ? 'secondary' : 'ghost'}
+                            onClick={() => {
+                                const cardIndex = cards.findIndex(c => c.title === feature.title);
+                                if (cardIndex !== -1) handleCardClick(cardIndex);
+                            }}
+                            className="justify-start p-6 text-left h-auto"
+                        >
+                            <feature.icon className="w-6 h-6 mr-4 text-primary" />
+                            <div>
+                                <p className="font-bold text-base">{feature.title}</p>
+                                <p className="text-sm text-muted-foreground">Click to learn more</p>
+                            </div>
+                        </Button>
+                    )
+                })}
             </div>
         </div>
     );
@@ -388,3 +434,5 @@ const TestimonialCard = ({ text, name, icon: Icon }: { text: string, name: strin
     </CardContent>
   </Card>
 );
+
+    
