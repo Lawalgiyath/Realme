@@ -37,8 +37,8 @@ const BubblePopGame = () => {
     
     useEffect(() => {
         const moveInterval = setInterval(() => {
-            setBubbles(prev => prev.map(b => ({ ...b, y: b.y - 1 })).filter(b => b.y > -20));
-        }, 80); // Slower interval for bubble movement
+            setBubbles(prev => prev.map(b => ({ ...b, y: b.y - 0.5 })).filter(b => b.y > -20));
+        }, 80);
 
         return () => clearInterval(moveInterval);
     }, []);
