@@ -5,7 +5,7 @@ import type { PersonalizedContentOutput } from '@/ai/flows/personalized-content'
 import type { MentalHealthAssessmentOutput } from '@/ai/flows/mental-health-assessment';
 import React, { createContext, useState, useContext, ReactNode, useMemo, useEffect, useCallback } from 'react';
 import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, type User as FirebaseUser, GoogleAuthProvider, signInWithPopup, signInAnonymously } from 'firebase/auth';
+import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, type User as FirebaseUser, GoogleAuthProvider, signInWithPopup, signInAnonymously, getRedirectResult } from 'firebase/auth';
 import { doc, setDoc, onSnapshot, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { DailyPlannerOutput } from '@/ai/flows/daily-planner-flow';
 
@@ -302,18 +302,19 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const loginWithGoogle = async (): Promise<void> => {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const userDocRef = doc(db, 'users', result.user.uid);
-      const docSnap = await getDoc(userDocRef);
-      if (!docSnap.exists()) {
-        await setDoc(userDocRef, {
-          ...initialData,
-          name: result.user.displayName,
-          email: result.user.email,
-        });
-      }
-  }
+    const provider = new GoogleAuthProvider();
+    const result = await signInWithPopup(auth, provider);
+    const userDocRef = doc(db, 'users', result.user.uid);
+    const docSnap = await getDoc(userDocRef);
+    if (!docSnap.exists()) {
+      await setDoc(userDocRef, {
+        ...initialData,
+        name: result.user.displayName,
+        email: result.user.email,
+        avatar: result.user.photoURL,
+      });
+    }
+  };
   
   const loginAnonymously = async(): Promise<FirebaseUser> => {
       const userCredential = await signInAnonymously(auth);

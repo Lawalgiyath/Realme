@@ -8,7 +8,7 @@ import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyA2aS3x6bhOVuw7IlapsWyGhfHyTqDpCms",
+  apiKey: "AIzaSyC0g3g_1g2h3i4j5k6l7m8n9o0p1q2r3s",
   authDomain: "realme-mdjf0.firebaseapp.com",
   projectId: "realme-mdjf0",
   storageBucket: "realme-mdjf0.appspot.com",
