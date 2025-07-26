@@ -38,7 +38,7 @@ export default function OrganizationDashboard() {
   const { toast } = useToast();
   const [organization, setOrganization] = useState<{id: string, name: string} | null>(null);
   const [insights, setInsights] = useState<OrganizationInsightsOutput | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadingInsights, setLoadingInsights] = useState(true);
 
   useEffect(() => {
     if (appLoading) {
@@ -59,7 +59,7 @@ export default function OrganizationDashboard() {
 
     // If we have a valid leader, proceed to fetch organization data.
     const fetchOrgData = async () => {
-        setLoading(true);
+        setLoadingInsights(true);
         const q = query(collection(db, "organizations"), where("leaderUid", "==", user.uid));
         const querySnapshot = await getDocs(q);
         
@@ -70,7 +70,7 @@ export default function OrganizationDashboard() {
                 title: "Error",
                 description: "Could not find your organization.",
             });
-            setLoading(false);
+            setLoadingInsights(false);
             return;
         }
 
@@ -85,7 +85,7 @@ export default function OrganizationDashboard() {
 
         if (memberData.length === 0) {
              setInsights(null);
-             setLoading(false);
+             setLoadingInsights(false);
              return;
         }
 
@@ -103,7 +103,7 @@ export default function OrganizationDashboard() {
                 description: "Could not generate organization insights.",
             })
         } finally {
-            setLoading(false);
+            setLoadingInsights(false);
         }
     };
 
@@ -205,7 +205,7 @@ export default function OrganizationDashboard() {
                     </CardContent>
                 </Card>
 
-                {loading ? (
+                {loadingInsights ? (
                     <div className="flex justify-center items-center py-10">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         <p className="ml-4 text-muted-foreground">Aya is analyzing your organization's wellness data...</p>
@@ -262,3 +262,5 @@ function InfoCard({ title, content, icon: Icon }: { title: string, content?: str
         </Card>
     )
 }
+
+    
