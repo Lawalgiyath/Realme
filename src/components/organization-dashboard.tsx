@@ -3,17 +3,20 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  HeartPulse,
+  Briefcase,
   LogOut,
   User,
   PanelLeft,
-  Briefcase,
-  ClipboardList,
-  LineChart,
   Copy,
-  Users
+  Users,
+  BarChart,
+  ClipboardList,
+  Smile,
+  Leaf,
+  Star,
+  AreaChart,
 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -26,7 +29,7 @@ import { useApp } from '@/context/app-context';
 import { useRouter } from 'next/navigation';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { useToast } from '@/hooks/use-toast';
 import { organizationInsights, OrganizationInsightsOutput } from '@/ai/flows/organization-insights-flow';
 import { Loader2 } from 'lucide-react';
@@ -41,47 +44,46 @@ export default function OrganizationDashboard() {
   const [loadingInsights, setLoadingInsights] = useState(true);
 
   useEffect(() => {
-    if (appLoading) {
-      return; // Wait for the app context to finish loading user data.
-    }
+    if (appLoading) return; // Wait for the main app loading to finish
 
     if (!user) {
-      // If there's no user after loading, redirect to login.
       router.replace('/organization/login');
       return;
     }
-
     if (!user.isLeader) {
-      // If the user is logged in but is not a leader, redirect them.
-      router.replace('/dashboard');
+      router.replace('/dashboard'); // It's a normal user, send them to their dashboard
       return;
     }
 
-    // If we have a valid leader, proceed to fetch organization data.
     const fetchOrgData = async () => {
         setLoadingInsights(true);
-        const q = query(collection(db, "organizations"), where("leaderUid", "==", user.uid));
-        const querySnapshot = await getDocs(q);
-        
-        if (querySnapshot.empty) {
-            console.error("Organization not found for leader:", user.uid);
-            toast({
-                variant: 'destructive',
-                title: "Error",
-                description: "Could not find your organization.",
-            });
+        if (!user.organizationId) {
+            console.error("Leader is missing organizationId");
+            toast({ variant: 'destructive', title: "Error", description: "Your account is not linked to an organization."});
             setLoadingInsights(false);
             return;
         }
 
-        const orgDoc = querySnapshot.docs[0];
-        const orgData = { id: orgDoc.id, name: orgDoc.data().name };
+        const orgDocRef = doc(db, "organizations", user.organizationId);
+        const orgDocSnap = await getDoc(orgDocRef);
+        
+        if (!orgDocSnap.exists()) {
+            console.error("Organization not found for leader:", user.uid);
+            toast({ variant: 'destructive', title: "Error", description: "Could not find your organization." });
+            setLoadingInsights(false);
+            return;
+        }
+
+        const orgData = { id: orgDocSnap.id, ...orgDocSnap.data() } as {id: string, name: string};
         setOrganization(orgData);
 
         // Fetch user data for the org
-        const usersQuery = query(collection(db, "users"), where("organizationId", "==", orgDoc.id));
+        const usersQuery = query(collection(db, "users"), where("organizationId", "==", orgDocSnap.id));
         const usersSnapshot = await getDocs(usersQuery);
-        const memberData = usersSnapshot.docs.map(doc => doc.data());
+        const memberData = usersSnapshot.docs.map(doc => {
+            const { name, email, ...rest } = doc.data(); // Strip PII
+            return rest;
+        });
 
         if (memberData.length === 0) {
              setInsights(null);
@@ -125,7 +127,7 @@ export default function OrganizationDashboard() {
     }
   }
 
-   if (appLoading || !user || !user.isLeader) {
+   if (appLoading || !user || !organization) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -137,7 +139,7 @@ export default function OrganizationDashboard() {
     <div className="flex min-h-screen bg-secondary/30">
         <aside className="hidden md:block w-72 flex-shrink-0 border-r bg-background">
              <nav className="flex flex-col h-full">
-                <div className="flex items-center gap-3 p-4 border-b">
+                <div className="flex items-center gap-3 p-4 border-b h-16">
                     <div className="p-1.5 rounded-lg bg-primary">
                         <Briefcase className="h-6 w-6 text-primary-foreground" />
                     </div>
@@ -177,11 +179,6 @@ export default function OrganizationDashboard() {
                             </div>
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem disabled>
-                            <User className="mr-2 h-4 w-4" />
-                            <span>Profile</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={handleLogout}>
                             <LogOut className="mr-2 h-4 w-4" />
                             <span>Log out</span>
@@ -194,10 +191,10 @@ export default function OrganizationDashboard() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Onboard Your Members</CardTitle>
-                        <CardDescription>Share this code with your members (e.g., students, employees) so they can link their account to your organization when they sign up.</CardDescription>
+                        <CardDescription>Share this code with your members so they can join your organization on signup.</CardDescription>
                     </CardHeader>
-                    <CardContent className="flex items-center gap-4">
-                        <p className="text-2xl font-mono p-3 bg-secondary rounded-md">{organization?.id}</p>
+                    <CardContent className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                        <p className="text-2xl font-mono p-3 bg-secondary rounded-md text-primary font-bold tracking-widest">{organization?.id}</p>
                         <Button onClick={copyOrgCode}>
                             <Copy className="mr-2 h-4 w-4" />
                             Copy Code
@@ -206,24 +203,30 @@ export default function OrganizationDashboard() {
                 </Card>
 
                 {loadingInsights ? (
-                    <div className="flex justify-center items-center py-10">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        <p className="ml-4 text-muted-foreground">Aya is analyzing your organization's wellness data...</p>
+                    <div className="flex justify-center items-center py-16 text-center">
+                        <div>
+                            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+                            <p className="mt-4 text-muted-foreground">Aya is analyzing your organization's wellness data...</p>
+                        </div>
                     </div>
                 ) : insights ? (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <InfoCard title="Overall Sentiment" icon={LineChart} content={insights.overallSentiment} />
-                        <InfoCard title="Common Themes in Worries" icon={ClipboardList} content={insights.commonThemes} />
-                        <InfoCard title="Trending Goals" icon={ClipboardList} content={insights.goalTrends} />
-                        <InfoCard title="Positive Highlights" icon={ClipboardList} content={insights.positiveHighlights} />
-                        <InfoCard title="Areas for Attention" icon={ClipboardList} content={insights.areasForAttention} />
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <InfoCard title="Overall Sentiment" icon={Smile} content={insights.overallSentiment} />
+                            <InfoCard title="Positive Highlights" icon={Star} content={insights.positiveHighlights} />
+                            <InfoCard title="Trending Goals" icon={Leaf} content={insights.goalTrends} />
+                        </div>
+                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <InfoCard title="Common Themes" icon={ClipboardList} content={insights.commonThemes} className="lg:col-span-1"/>
+                            <InfoCard title="Areas for Attention" icon={AreaChart} content={insights.areasForAttention} className="lg:col-span-1"/>
+                        </div>
                     </div>
                 ) : (
                     <Alert>
                         <Users className="h-4 w-4" />
                         <AlertTitle>Waiting for Members</AlertTitle>
                         <AlertDescription>
-                            Your dashboard is ready. As soon as members join your organization using the code above and start interacting with the app, anonymous wellness insights will appear here.
+                            Your dashboard is ready. As soon as members join and interact with the app, anonymous insights will appear here.
                         </AlertDescription>
                     </Alert>
                 )}
@@ -233,34 +236,33 @@ export default function OrganizationDashboard() {
   );
 }
 
-
-function InfoCard({ title, content, icon: Icon }: { title: string, content?: string, icon: React.ElementType }) {
-    // Split content by newlines and render as a list if it contains bullet points
+function InfoCard({ title, content, icon: Icon, className }: { title: string, content?: string, icon: React.ElementType, className?: string }) {
     const contentItems = content?.split('\n').filter(item => item.trim().length > 0);
 
     return (
-        <Card>
+        <Card className={className}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{title}</CardTitle>
-                <Icon className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-base font-semibold">{title}</CardTitle>
+                <Icon className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-                <div className="text-base text-foreground">
+                <div className="text-sm text-foreground">
                     {!content ? (
-                        <span className="text-muted-foreground">No data yet.</span>
-                    ) : contentItems && contentItems.length > 1 ? (
-                        <ul className="list-disc pl-5 space-y-1">
+                        <p className="text-muted-foreground">No data yet.</p>
+                    ) : contentItems && contentItems.length > 1 && content.includes('- ') ? (
+                        <ul className="space-y-1 mt-2">
                             {contentItems.map((item, index) => (
-                                <li key={index} className="text-sm">{item.replace(/^- /, '')}</li>
+                                <li key={index} className="flex items-start gap-2">
+                                  <span className="text-primary mt-1">&bull;</span>
+                                  <span>{item.replace(/^- /, '')}</span>
+                                </li>
                             ))}
                         </ul>
                     ) : (
-                        <p className="text-sm">{content}</p>
+                        <p className="text-muted-foreground">{content}</p>
                     )}
                 </div>
             </CardContent>
         </Card>
     )
 }
-
-    

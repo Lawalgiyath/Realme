@@ -45,13 +45,13 @@ const prompt = ai.definePrompt({
 
 **Your Analysis Task:**
 
-Based on the provided JSON data, generate a report for the organization's leader. The report should cover the following five areas:
+Based on the provided JSON data, generate a report for the organization's leader. The report should cover the following five areas. Please be concise and direct in your answers.
 
 1.  **Overall Sentiment:** Briefly summarize the collective mood. Is it generally positive, negative, mixed? Are there any strong overriding emotions like stress or optimism?
-2.  **Common Themes:** Identify the most frequent topics or concerns appearing in journal entries. Think in broad categories like "workload," "future uncertainty," "personal growth," etc. For this, provide a bulleted list where each point is on a new line.
-3.  **Goal Trends:** What are the most common types of wellness goals members are setting for themselves? For this, provide a bulleted list where each point is on a new line.
+2.  **Common Themes:** Identify the most frequent topics or concerns appearing in journal entries. Think in broad categories like "workload," "future uncertainty," "personal growth," etc. For this, provide a bulleted list where each point starts with a hyphen and is on a new line.
+3.  **Goal Trends:** What are the most common types of wellness goals members are setting for themselves? For this, provide a bulleted list where each point starts with a hyphen and is on a new line.
 4.  **Positive Highlights:** Are there any recurring positive notes, expressions of gratitude, or successes that stand out in the data?
-5.  **Areas for Attention:** Based on the analysis, what general areas could the organization focus on to support its members' well-being? Frame these as gentle, constructive suggestions (e.g., "Consider sharing resources on time management," or "Explore ways to foster team connection."). For this, provide a bulleted list where each point is on a new line.
+5.  **Areas for Attention:** Based on the analysis, what general areas could the organization focus on to support its members' well-being? Frame these as gentle, constructive suggestions (e.g., "Consider sharing resources on time management," or "Explore ways to foster team connection."). For this, provide a bulleted list where each point starts with a hyphen and is on a new line.
 
 Provide the response in the structured output format.`,
 });

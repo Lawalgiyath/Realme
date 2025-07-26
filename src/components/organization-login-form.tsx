@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 import { useApp } from "@/context/app-context"
-import { BookOpen, Loader2 } from "lucide-react"
+import { Briefcase, Loader2 } from "lucide-react"
 
 const formSchema = z.object({
   email: z.string().email({
@@ -91,17 +91,12 @@ export default function OrganizationLoginForm() {
 
   return (
     <Card className="w-full max-w-sm">
-        <CardHeader>
-            <div className="flex items-center gap-4 mb-2">
-                <div className="p-3 rounded-lg bg-primary">
-                    <BookOpen className="h-6 w-6 text-primary-foreground" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-foreground">Realme for Organizations</h1>
-                  <CardTitle className="text-2xl">Leader Login</CardTitle>
-                </div>
+        <CardHeader className="text-center">
+            <div className="mx-auto bg-primary/10 p-3 rounded-full mb-2">
+                <Briefcase className="h-8 w-8 text-primary" />
             </div>
-            <CardDescription>Enter your credentials to access your organization's dashboard.</CardDescription>
+            <CardTitle className="text-2xl">Leader Login</CardTitle>
+            <CardDescription>Access your organization's wellness dashboard.</CardDescription>
         </CardHeader>
         <CardContent>
             <Form {...form}>
@@ -139,9 +134,9 @@ export default function OrganizationLoginForm() {
                 </form>
             </Form>
             <div className="mt-4 text-center text-sm">
-                Don&apos;t have an organization account?{" "}
+                Need an account?{" "}
                 <Link href="/organization/signup" className="underline text-primary">
-                    Sign up
+                    Register your organization
                 </Link>
             </div>
         </CardContent>

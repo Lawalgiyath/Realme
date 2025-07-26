@@ -102,14 +102,11 @@ export default function OrganizationSignupForm() {
   return (
     <Card className="w-full max-w-lg">
         <CardHeader className="text-center">
-             <div className="flex justify-center items-center gap-2 mb-4">
-                <div className="p-1.5 rounded-lg bg-primary">
-                    <Briefcase className="h-6 w-6 text-primary-foreground" />
-                </div>
-                <h1 className="text-2xl font-bold text-foreground">Realme for Organizations</h1>
+             <div className="mx-auto bg-primary/10 p-3 rounded-full mb-2">
+                <Briefcase className="h-8 w-8 text-primary" />
             </div>
-            <CardTitle>Create a Leader Account</CardTitle>
-            <CardDescription>Register your organization to get wellness insights.</CardDescription>
+            <CardTitle className="text-2xl">Register Your Organization</CardTitle>
+            <CardDescription>Create a leader account to get wellness insights for your members.</CardDescription>
         </CardHeader>
         <CardContent>
             <Form {...form}>
@@ -122,7 +119,7 @@ export default function OrganizationSignupForm() {
                                 <FormItem>
                                 <FormLabel>Your Full Name</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="John Doe" {...field} disabled={loading} />
+                                    <Input placeholder="e.g., Jane Doe" {...field} disabled={loading} />
                                 </FormControl>
                                 <FormMessage />
                                 </FormItem>
@@ -135,7 +132,7 @@ export default function OrganizationSignupForm() {
                                 <FormItem>
                                 <FormLabel>Organization Name</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="St. Patrick's College" {...field} disabled={loading} />
+                                    <Input placeholder="e.g., Acme Corporation" {...field} disabled={loading} />
                                 </FormControl>
                                 <FormMessage />
                                 </FormItem>
@@ -149,7 +146,7 @@ export default function OrganizationSignupForm() {
                             <FormItem>
                             <FormLabel>Work Email</FormLabel>
                             <FormControl>
-                                <Input placeholder="name@example.com" {...field} disabled={loading} />
+                                <Input placeholder="leader@example.com" {...field} disabled={loading} />
                             </FormControl>
                             <FormMessage />
                             </FormItem>
@@ -173,7 +170,7 @@ export default function OrganizationSignupForm() {
                     />
                     <Button type="submit" className="w-full" disabled={loading}>
                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {loading ? 'Creating Account...' : 'Sign Up'}
+                        {loading ? 'Creating Account...' : 'Sign Up & Create Organization'}
                     </Button>
                 </form>
             </Form>

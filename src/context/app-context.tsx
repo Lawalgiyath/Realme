@@ -5,7 +5,7 @@ import type { PersonalizedContentOutput } from '@/ai/flows/personalized-content'
 import type { MentalHealthAssessmentOutput } from '@/ai/flows/mental-health-assessment';
 import React, { createContext, useState, useContext, ReactNode, useMemo, useEffect, useCallback } from 'react';
 import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, type User as FirebaseUser, GoogleAuthProvider, signInWithPopup, signInAnonymously, getRedirectResult } from 'firebase/auth';
+import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, type User as FirebaseUser, GoogleAuthProvider, signInWithPopup, signInAnonymously } from 'firebase/auth';
 import { doc, setDoc, onSnapshot, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { DailyPlannerOutput } from '@/ai/flows/daily-planner-flow';
 
@@ -48,7 +48,6 @@ export interface Interaction {
     data: any;
 }
 
-// This defines the structure of the data stored in Firestore for each user.
 interface UserData {
     moods: Mood[];
     goals: Goal[];
@@ -132,7 +131,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   
-  // State for user data, synced with Firestore
   const [userData, setUserData] = useState<UserData>(initialData);
   
   const [unlockedAchievement, setUnlockedAchievement] = useState<Achievement | null>(null);
@@ -140,13 +138,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        
-        // Firestore real-time listener
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         const unsubscribeFirestore = onSnapshot(userDocRef, (docSnap) => {
              if (docSnap.exists()) {
                 const data = docSnap.data() as UserData;
-                // Check if the plan is older than 24 hours
                 if (data.dailyPlanTimestamp) {
                     const planDate = new Date(data.dailyPlanTimestamp);
                     const now = new Date();
@@ -178,7 +173,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         return () => unsubscribeFirestore();
       } else {
         setUser(null);
-        setUserData(initialData); // Reset data on logout
+        setUserData(initialData);
         setLoading(false);
       }
     });
@@ -205,7 +200,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
          updateUserData({ 
             assessmentResult, 
             assessmentTimestamp: new Date().toISOString(),
-            personalizedContent: null // Reset content plan on new assessment
+            personalizedContent: null
         });
     } else {
         updateUserData({ assessmentResult: null, assessmentTimestamp: null });
@@ -247,18 +242,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const { user: firebaseUser } = userCredential;
 
     await updateProfile(firebaseUser, { displayName: name });
+    const userDocRef = doc(db, 'users', firebaseUser.uid);
 
     if (isLeader) {
         if (!organizationName) throw new Error("Organization name is required for leaders.");
         
-        const orgRef = await addDoc(collection(db, 'organizations'), {
-            name: organizationName,
-            leaderUid: firebaseUser.uid,
-            leaderName: name,
-            createdAt: serverTimestamp()
-        });
-
-        const userDocRef = doc(db, 'users', firebaseUser.uid);
+        const orgRef = doc(collection(db, 'organizations'));
+        
         await setDoc(userDocRef, {
             ...initialData,
             name: name,
@@ -267,18 +257,21 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             organizationId: orgRef.id,
         });
 
+        await setDoc(orgRef, {
+            name: organizationName,
+            leaderUid: firebaseUser.uid,
+            leaderName: name,
+            createdAt: serverTimestamp()
+        });
+
     } else {
         const avatarUrl = getRandomAvatar();
         await updateProfile(firebaseUser, {
             photoURL: avatarUrl,
         });
-
-        const userDocRef = doc(db, 'users', firebaseUser.uid);
-        const userDataToSet: Partial<UserData> & { name: string; email: string, isLeader: boolean } = {
+        
+        const userDataToSet: UserData = {
             ...initialData,
-            name: name,
-            email: email,
-            isLeader: false,
         };
 
         if (organizationCode) {
@@ -330,7 +323,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const clearUnlockedAchievement = () => {
     setUnlockedAchievement(null);
   };
-
 
   const value: AppContextType = useMemo(() => ({
     user,
