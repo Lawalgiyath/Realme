@@ -46,6 +46,10 @@ export default function OrganizationDashboard() {
         router.replace('/organization/login');
         return;
     }
+    if (!user.isLeader) {
+        router.replace('/dashboard');
+        return;
+    }
 
     const fetchOrgData = async () => {
         setLoading(true);
@@ -115,7 +119,7 @@ export default function OrganizationDashboard() {
     }
   }
 
-   if (appLoading || (!organization && loading)) {
+   if (appLoading || (!organization && loading) || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
