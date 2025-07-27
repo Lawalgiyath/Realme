@@ -1,18 +1,28 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can only read and write to their own document.
-    match /users/{userId} {
-      allow read, update, create: if request.auth.uid == userId;
+    // Helper function to check if a user is a leader of a given organization
+    function isOrgLeader(orgId) {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isLeader == true &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId;
     }
 
-    // Any authenticated user can create an organization (as they become the leader).
-    // Any authenticated user can read an organization's details (e.g., for invite code validation).
+    match /users/{userId} {
+      // Allow a user to read/write their own document
+      // OR allow a read if the requester is the leader of the user's organization
+      allow read: if request.auth.uid == userId || isOrgLeader(resource.data.organizationId);
+      allow write: if request.auth.uid == userId;
+    }
+
     match /organizations/{orgId} {
-      allow read, create: if request.auth.uid != null;
-      // Only the leader can update their organization's document.
-      allow update: if request.auth.uid == get(/databases/$(database)/documents/organizations/$(orgId)).data.leaderUid;
+      // Any authenticated user can create an organization (and becomes a leader)
+      // Any authenticated user can read organization info (needed for member signup)
+      allow create, read: if request.auth != null;
+    }
+    
+    match /community-stories/{storyId} {
+      allow read;
+      allow create: if request.auth != null;
     }
   }
 }
