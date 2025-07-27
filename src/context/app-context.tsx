@@ -293,6 +293,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         });
         userDataToSet.organizationId = newOrgRef.id;
         userDataToSet.organizationName = organizationName;
+        await setDoc(doc(db, 'users', firebaseUser.uid), { organizationId: newOrgRef.id }, { merge: true });
     } else if (organizationCode) {
         const orgQuery = query(collection(db, 'organizations'), where('__name__', '==', organizationCode), limit(1));
         const orgSnapshot = await getDocs(orgQuery);
@@ -312,13 +313,24 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const login = async (email: string, password: string, isLeader = false): Promise<FirebaseUser> => {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const userDocRef = doc(db, 'users', userCredential.user.uid);
-      const userDoc = await getDoc(userDocRef);
+      let userDoc = await getDoc(userDocRef);
 
       if (!userDoc.exists()) {
-          throw new Error("User data not found.");
+          // User exists in Auth but not Firestore. Create their document.
+          console.log(`User document not found for ${userCredential.user.uid}, creating one...`);
+          const userDataToSet: UserData = {
+              ...initialData,
+              name: userCredential.user.displayName,
+              email: userCredential.user.email,
+              avatar: userCredential.user.photoURL,
+              isLeader: false, // Default to false, leader check happens next
+          };
+          await setDoc(userDocRef, userDataToSet);
+          userDoc = await getDoc(userDocRef); // Re-fetch the document
       }
 
-      if (isLeader && !userDoc.data().isLeader) {
+      const userData = userDoc.data();
+      if (isLeader && !userData?.isLeader) {
           await signOut(auth);
           throw new Error("NOT_A_LEADER");
       }
@@ -403,3 +415,6 @@ export const useApp = () => {
   }
   return context;
 };
+
+
+    
