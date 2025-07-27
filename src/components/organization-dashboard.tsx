@@ -29,7 +29,7 @@ const EmptyState = ({ organizationCode, onInviteClick }: { organizationCode: str
         </div>
         <h2 className="text-3xl font-bold tracking-tight">Welcome to Your Wellness Dashboard!</h2>
         <p className="mt-4 text-lg text-muted-foreground">
-            Once your team members start using the app with your organization code, you’ll see powerful, anonymized insights here to help you boost productivity, morale, and well-being.
+            Once your team members start using the app, you’ll see powerful, anonymized insights here to help you boost productivity, morale, and well-being.
         </p>
         <div className="mt-8">
             <Button size="lg" onClick={onInviteClick}>
@@ -69,15 +69,14 @@ export default function OrganizationDashboard() {
     const [insightsLoading, setInsightsLoading] = useState(false);
 
     useEffect(() => {
-        if (!appLoading) {
-            if (!user || !user.isLeader) {
-                router.replace('/organization/login');
-            }
+        if (!appLoading && (!user || !user.isLeader)) {
+          router.replace('/organization/login');
         }
-    }, [user, appLoading, router]);
+      }, [user, appLoading, router]);
 
     useEffect(() => {
-        if (!organization?.id) {
+        const orgId = user?.organizationId;
+        if (!orgId) {
              if (!appLoading && user?.isLeader) {
                 setLoadingData(false);
             }
@@ -85,7 +84,7 @@ export default function OrganizationDashboard() {
         };
         
         setLoadingData(true);
-        const membersQuery = query(collection(db, 'users'), where('organizationId', '==', organization.id));
+        const membersQuery = query(collection(db, 'users'), where('organizationId', '==', orgId));
         
         const unsubscribe = onSnapshot(membersQuery, async (querySnapshot) => {
             const fetchedMembers: Member[] = [];
@@ -106,7 +105,7 @@ export default function OrganizationDashboard() {
         });
 
         return () => unsubscribe();
-    }, [organization?.id, toast, insights, appLoading, user]);
+    }, [user?.organizationId, toast, insights, appLoading]);
     
     const handleGenerateInsights = async (currentMembers: Member[]) => {
         if (currentMembers.length === 0) return;
@@ -135,7 +134,7 @@ export default function OrganizationDashboard() {
     };
 
     const copyInviteCode = () => {
-        const code = organization?.id || user?.organizationId;
+        const code = user?.organizationId;
         if(code){
             navigator.clipboard.writeText(code);
             toast({ title: 'Code Copied!', description: 'Your organization code has been copied to the clipboard.' });
@@ -153,7 +152,7 @@ export default function OrganizationDashboard() {
         return Object.entries(counts).map(([name, value]) => ({ name, value }));
     }, [members]);
 
-    if (appLoading || !user || !user.isLeader) {
+    if (appLoading || !user) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -161,8 +160,8 @@ export default function OrganizationDashboard() {
         );
     }
     
-    const orgCode = organization?.id || user.organizationId;
-    const orgName = organization?.name || user.organizationName;
+    const orgCode = user.organizationId;
+    const orgName = user.organizationName;
 
     return (
         <div className="min-h-screen bg-secondary/30">
