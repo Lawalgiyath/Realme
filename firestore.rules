@@ -1,21 +1,22 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users can create their own profile, and can only read/update their own data.
+    // A user can create their own user document.
+    // They can only read or update their own data.
     match /users/{userId} {
       allow read, update: if request.auth.uid == userId;
-      allow create: if request.auth.uid != null;
+      allow create: if request.auth.uid == request.resource.data.uid;
     }
 
-    // Organizations can be created by any authenticated user (the leader).
-    // An organization's data can be read by any authenticated user who is part of that organization.
-    match /organizations/{orgId} {
-      allow read: if request.auth.uid != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == orgId;
-      allow create: if request.auth.uid != null && request.resource.data.leaderUid == request.auth.uid;
-      allow update: if request.auth.uid == resource.data.leaderUid;
+    // An authenticated user can create an organization, but only if they are the leader.
+    // Any authenticated user can read organization data (e.g., to verify an org code).
+    match /organizations/{organizationId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth.uid == request.resource.data.leaderUid;
+      // Add update rules for leaders later if needed
+      // allow update: if request.auth.uid == resource.data.leaderUid;
     }
   }
 }
