@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
 import { generateOrganizationInsights, OrganizationInsightsOutput } from '@/ai/flows/organization-insights-flow';
-import { Bar, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
+import { Bar, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from './ui/chart';
 import { Alert, AlertTitle, AlertDescription } from './ui/alert';
 
@@ -46,8 +46,10 @@ const EmptyState = ({ organizationCode, onInviteClick }: { organizationCode: str
                 <div className="flex items-center gap-4 p-3 bg-background rounded-lg">
                     <p className="text-2xl font-mono flex-1">{organizationCode}</p>
                     <Button variant="ghost" size="icon" onClick={() => {
-                        navigator.clipboard.writeText(organizationCode);
-                        onInviteClick(); // a bit redundant but triggers toast
+                        if(organizationCode) {
+                            navigator.clipboard.writeText(organizationCode);
+                            onInviteClick(); // a bit redundant but triggers toast
+                        }
                     }}>
                         <ClipboardCopy className="h-5 w-5" />
                     </Button>
@@ -62,41 +64,49 @@ export default function OrganizationDashboard() {
     const router = useRouter();
     const { toast } = useToast();
     const [members, setMembers] = useState<Member[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loadingData, setLoadingData] = useState(true);
     const [insights, setInsights] = useState<OrganizationInsightsOutput | null>(null);
     const [insightsLoading, setInsightsLoading] = useState(false);
 
     useEffect(() => {
-        if (!appLoading && !user) {
-            router.replace('/organization/login');
+        if (!appLoading) {
+            if (!user || !user.isLeader) {
+                router.replace('/organization/login');
+            }
         }
     }, [user, appLoading, router]);
 
     useEffect(() => {
-        if (!organization?.id) return;
+        if (!organization?.id) {
+             if (!appLoading && user?.isLeader) {
+                setLoadingData(false);
+            }
+            return;
+        };
         
-        setLoading(true);
+        setLoadingData(true);
         const membersQuery = query(collection(db, 'users'), where('organizationId', '==', organization.id));
         
         const unsubscribe = onSnapshot(membersQuery, async (querySnapshot) => {
             const fetchedMembers: Member[] = [];
             querySnapshot.forEach((doc) => {
-                fetchedMembers.push({ id: doc.id, ...doc.data() } as Member);
+                const data = doc.data();
+                fetchedMembers.push({ id: doc.id, ...data } as Member);
             });
             setMembers(fetchedMembers);
-            setLoading(false);
+            setLoadingData(false);
 
             if(fetchedMembers.length > 0 && !insights) {
                 handleGenerateInsights(fetchedMembers);
             }
         }, (error) => {
             console.error("Error fetching members:", error);
-            setLoading(false);
+            setLoadingData(false);
             toast({ variant: 'destructive', title: "Error", description: "Could not load organization members." });
         });
 
         return () => unsubscribe();
-    }, [organization?.id, toast, insights]);
+    }, [organization?.id, toast, insights, appLoading, user]);
     
     const handleGenerateInsights = async (currentMembers: Member[]) => {
         if (currentMembers.length === 0) return;
@@ -121,17 +131,20 @@ export default function OrganizationDashboard() {
 
     const handleLogout = async () => {
         await logout();
-        router.replace('/');
+        router.replace('/organization/login');
     };
 
     const copyInviteCode = () => {
-        navigator.clipboard.writeText(organization?.id ?? '');
-        toast({ title: 'Code Copied!', description: 'Your organization code has been copied to the clipboard.' });
+        const code = organization?.id || user?.organizationId;
+        if(code){
+            navigator.clipboard.writeText(code);
+            toast({ title: 'Code Copied!', description: 'Your organization code has been copied to the clipboard.' });
+        }
     };
     
     const moodDistribution = useMemo(() => {
         const allMoods = members.flatMap(m => m.moods?.map(mood => mood.mood) || []);
-        const counts = { Happy: 0, Calm: 0, Okay: 0, Anxious: 0, Sad: 0 };
+        const counts: Record<string, number> = { Happy: 0, Calm: 0, Okay: 0, Anxious: 0, Sad: 0 };
         allMoods.forEach(mood => {
             if (mood in counts) {
                 counts[mood as keyof typeof counts]++;
@@ -140,7 +153,7 @@ export default function OrganizationDashboard() {
         return Object.entries(counts).map(([name, value]) => ({ name, value }));
     }, [members]);
 
-    if (appLoading || loading) {
+    if (appLoading || !user || !user.isLeader) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -148,6 +161,9 @@ export default function OrganizationDashboard() {
         );
     }
     
+    const orgCode = organization?.id || user.organizationId;
+    const orgName = organization?.name || user.organizationName;
+
     return (
         <div className="min-h-screen bg-secondary/30">
             <header className="bg-background shadow-sm">
@@ -158,7 +174,7 @@ export default function OrganizationDashboard() {
                                 <Briefcase className="h-7 w-7 text-primary" />
                             </div>
                             <div>
-                                <h1 className="text-xl font-bold font-headline">{organization?.name}</h1>
+                                <h1 className="text-xl font-bold font-headline">{orgName}</h1>
                                 <p className="text-sm text-muted-foreground">Organization Wellness Dashboard</p>
                             </div>
                         </div>
@@ -172,8 +188,12 @@ export default function OrganizationDashboard() {
             </header>
 
             <main className="container mx-auto p-4 sm:p-6 lg:p-8">
-                {members.length === 0 ? (
-                    <EmptyState organizationCode={organization?.id ?? ''} onInviteClick={copyInviteCode} />
+                {loadingData ? (
+                     <div className="flex h-64 w-full items-center justify-center bg-background rounded-lg">
+                        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                    </div>
+                ) : members.length === 0 ? (
+                    <EmptyState organizationCode={orgCode ?? ''} onInviteClick={copyInviteCode} />
                 ) : (
                     <div className="grid gap-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -228,7 +248,7 @@ export default function OrganizationDashboard() {
                                                 <CartesianGrid vertical={false} />
                                                 <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
                                                 <YAxis />
-                                                <Tooltip 
+                                                <RechartsTooltip 
                                                     cursor={{ fill: 'hsl(var(--secondary))' }} 
                                                     content={<ChartTooltipContent />} 
                                                 />
