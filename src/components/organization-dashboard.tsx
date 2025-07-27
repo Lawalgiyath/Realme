@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/context/app-context';
 import { useRouter } from 'next/navigation';
-import { BarChart, BookHeart, Briefcase, CheckCircle, ClipboardCopy, Download, Filter, HeartPulse, Loader2, LogOut, Mail, Send, Users, User, Smile, Meh, Frown } from 'lucide-react';
+import { BarChart as BarChartIcon, BookHeart, Briefcase, CheckCircle, ClipboardCopy, Download, Filter, HeartPulse, Loader2, LogOut, Mail, Send, Users, User, Smile, Meh, Frown } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Avatar, AvatarFallback } from './ui/avatar';
@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
 import { generateOrganizationInsights, OrganizationInsightsOutput } from '@/ai/flows/organization-insights-flow';
-import { Bar, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from './ui/chart';
 import { Alert, AlertTitle, AlertDescription } from './ui/alert';
 
@@ -152,7 +152,7 @@ export default function OrganizationDashboard() {
         return Object.entries(counts).map(([name, value]) => ({ name, value }));
     }, [members]);
 
-    if (appLoading || !user) {
+    if (appLoading || loadingData || !user) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -187,11 +187,7 @@ export default function OrganizationDashboard() {
             </header>
 
             <main className="container mx-auto p-4 sm:p-6 lg:p-8">
-                {loadingData ? (
-                     <div className="flex h-64 w-full items-center justify-center bg-background rounded-lg">
-                        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                    </div>
-                ) : members.length === 0 ? (
+                {members.length === 0 ? (
                     <EmptyState organizationCode={orgCode ?? ''} onInviteClick={copyInviteCode} />
                 ) : (
                     <div className="grid gap-6">
@@ -242,18 +238,16 @@ export default function OrganizationDashboard() {
                                 </CardHeader>
                                 <CardContent>
                                     <ChartContainer config={{}} className="min-h-[250px] w-full">
-                                        <ResponsiveContainer width="100%" height={250}>
-                                            <BarChart data={moodDistribution}>
-                                                <CartesianGrid vertical={false} />
-                                                <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
-                                                <YAxis />
-                                                <RechartsTooltip 
-                                                    cursor={{ fill: 'hsl(var(--secondary))' }} 
-                                                    content={<ChartTooltipContent />} 
-                                                />
-                                                <Bar dataKey="value" fill="hsl(var(--primary))" radius={4} />
-                                            </BarChart>
-                                        </ResponsiveContainer>
+                                        <BarChart data={moodDistribution}>
+                                            <CartesianGrid vertical={false} />
+                                            <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
+                                            <YAxis />
+                                            <RechartsTooltip 
+                                                cursor={{ fill: 'hsl(var(--secondary))' }} 
+                                                content={<ChartTooltipContent />} 
+                                            />
+                                            <Bar dataKey="value" fill="hsl(var(--primary))" radius={4} />
+                                        </BarChart>
                                     </ChartContainer>
                                 </CardContent>
                            </Card>
@@ -285,7 +279,7 @@ export default function OrganizationDashboard() {
                                 </CardContent>
                                 <CardFooter>
                                     <Button className="w-full" onClick={() => handleGenerateInsights(members)} disabled={insightsLoading}>
-                                        {insightsLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Users className="mr-2 h-4 w-4" />}
+                                        {insightsLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BarChartIcon className="mr-2 h-4 w-4" />}
                                         {insightsLoading ? 'Analyzing...' : 'Re-generate Insights'}
                                     </Button>
                                 </CardFooter>
