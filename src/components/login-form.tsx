@@ -116,8 +116,10 @@ export function LoginForm() {
          switch(error.code) {
             case 'auth/user-not-found':
             case 'auth/wrong-password':
-            case 'auth/invalid-credential':
                 description = "Invalid email or password. Please try again.";
+                break;
+            case 'auth/invalid-credential':
+                description = "The email or password you entered is incorrect. Please double-check your credentials and try again.";
                 break;
             case 'auth/invalid-email':
                 description = "The email address is not valid.";

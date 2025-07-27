@@ -71,8 +71,10 @@ export function OrganizationLoginForm() {
          switch(error.code) {
             case 'auth/user-not-found':
             case 'auth/wrong-password':
-            case 'auth/invalid-credential':
                 description = "Invalid email or password. Please check that you are using your organization leader credentials.";
+                break;
+            case 'auth/invalid-credential':
+                description = "The email or password you entered is incorrect. Please ensure you are using your organization leader credentials and try again.";
                 break;
             case 'auth/invalid-email':
                 description = "The email address is not valid.";
