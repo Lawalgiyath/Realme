@@ -11,8 +11,8 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, onSnapshot, doc } from 'firebase/firestore';
 import { generateOrganizationInsights, OrganizationInsightsOutput } from '@/ai/flows/organization-insights-flow';
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from './ui/chart';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from './ui/chart';
 import { Alert, AlertTitle, AlertDescription } from './ui/alert';
 
 interface Member {
@@ -138,6 +138,13 @@ export default function OrganizationDashboard() {
         return Object.entries(counts).map(([name, value]) => ({ name, value }));
     }, [members]);
 
+    const chartConfig = {
+      value: {
+        label: "Count",
+        color: "hsl(var(--primary))",
+      },
+    } satisfies ChartConfig;
+
     if (appLoading || loadingData || !user || !organization) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -220,18 +227,18 @@ export default function OrganizationDashboard() {
                                     <CardDescription>Anonymized mood data from your team members.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    <ResponsiveContainer width="100%" height={300}>
-                                        <BarChart data={moodDistribution}>
+                                    <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
+                                        <BarChart accessibilityLayer data={moodDistribution}>
                                             <CartesianGrid vertical={false} />
                                             <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
                                             <YAxis />
-                                            <RechartsTooltip 
-                                                cursor={{ fill: 'hsl(var(--secondary))' }} 
-                                                content={<ChartTooltipContent />} 
+                                            <ChartTooltip
+                                                cursor={{ fill: 'hsl(var(--secondary))' }}
+                                                content={<ChartTooltipContent />}
                                             />
                                             <Bar dataKey="value" fill="hsl(var(--primary))" radius={4} />
                                         </BarChart>
-                                    </ResponsiveContainer>
+                                    </ChartContainer>
                                 </CardContent>
                            </Card>
                            <div className="space-y-6">
