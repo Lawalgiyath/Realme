@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs, onSnapshot, doc } from 'firebase/firestore';
 import { generateOrganizationInsights, OrganizationInsightsOutput } from '@/ai/flows/organization-insights-flow';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from './ui/chart';
@@ -31,26 +31,15 @@ const EmptyState = ({ organizationCode, onInviteClick }: { organizationCode: str
         <p className="mt-4 text-lg text-muted-foreground">
             Once your team members start using the app, you’ll see powerful, anonymized insights here to help you boost productivity, morale, and well-being.
         </p>
-        <div className="mt-8">
-            <Button size="lg" onClick={onInviteClick}>
-                <Send className="mr-2 h-5 w-5" />
-                Invite Members Now
-            </Button>
-        </div>
         <Card className="mt-8 text-left bg-secondary/50 border-dashed">
             <CardHeader>
-                <CardTitle className="text-lg">Your Unique Organization Code</CardTitle>
-                <CardDescription>Share this code with your members. They will be prompted to enter it during signup.</CardDescription>
+                <CardTitle className="text-lg">Your First Step: Invite Your Team</CardTitle>
+                <CardDescription>Share this unique code with your members. They will be prompted to enter it during signup.</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="flex items-center gap-4 p-3 bg-background rounded-lg">
                     <p className="text-2xl font-mono flex-1">{organizationCode}</p>
-                    <Button variant="ghost" size="icon" onClick={() => {
-                        if(organizationCode) {
-                            navigator.clipboard.writeText(organizationCode);
-                            onInviteClick(); // a bit redundant but triggers toast
-                        }
-                    }}>
+                    <Button variant="ghost" size="icon" onClick={onInviteClick}>
                         <ClipboardCopy className="h-5 w-5" />
                     </Button>
                 </div>
@@ -76,10 +65,8 @@ export default function OrganizationDashboard() {
 
     useEffect(() => {
         const orgId = user?.organizationId;
-        if (!orgId) {
-             if (!appLoading && user?.isLeader) {
-                setLoadingData(false);
-            }
+        if (!orgId || !user?.isLeader) {
+            setLoadingData(false);
             return;
         };
         
@@ -105,7 +92,7 @@ export default function OrganizationDashboard() {
         });
 
         return () => unsubscribe();
-    }, [user?.organizationId, toast, insights, appLoading]);
+    }, [user?.organizationId, user?.isLeader, toast, insights, appLoading]);
     
     const handleGenerateInsights = async (currentMembers: Member[]) => {
         if (currentMembers.length === 0) return;
@@ -134,9 +121,8 @@ export default function OrganizationDashboard() {
     };
 
     const copyInviteCode = () => {
-        const code = user?.organizationId;
-        if(code){
-            navigator.clipboard.writeText(code);
+        if(organization?.id){
+            navigator.clipboard.writeText(organization.id);
             toast({ title: 'Code Copied!', description: 'Your organization code has been copied to the clipboard.' });
         }
     };
@@ -152,7 +138,7 @@ export default function OrganizationDashboard() {
         return Object.entries(counts).map(([name, value]) => ({ name, value }));
     }, [members]);
 
-    if (appLoading || loadingData || !user) {
+    if (appLoading || loadingData || !user || !organization) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -160,9 +146,6 @@ export default function OrganizationDashboard() {
         );
     }
     
-    const orgCode = user.organizationId;
-    const orgName = user.organizationName;
-
     return (
         <div className="min-h-screen bg-secondary/30">
             <header className="bg-background shadow-sm">
@@ -173,7 +156,7 @@ export default function OrganizationDashboard() {
                                 <Briefcase className="h-7 w-7 text-primary" />
                             </div>
                             <div>
-                                <h1 className="text-xl font-bold font-headline">{orgName}</h1>
+                                <h1 className="text-xl font-bold font-headline">{organization.name}</h1>
                                 <p className="text-sm text-muted-foreground">Organization Wellness Dashboard</p>
                             </div>
                         </div>
@@ -188,7 +171,7 @@ export default function OrganizationDashboard() {
 
             <main className="container mx-auto p-4 sm:p-6 lg:p-8">
                 {members.length === 0 ? (
-                    <EmptyState organizationCode={orgCode ?? ''} onInviteClick={copyInviteCode} />
+                    <EmptyState organizationCode={organization.id} onInviteClick={copyInviteCode} />
                 ) : (
                     <div className="grid gap-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -237,7 +220,7 @@ export default function OrganizationDashboard() {
                                     <CardDescription>Anonymized mood data from your team members.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    <ChartContainer config={{}} className="min-h-[250px] w-full">
+                                    <ResponsiveContainer width="100%" height={300}>
                                         <BarChart data={moodDistribution}>
                                             <CartesianGrid vertical={false} />
                                             <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
@@ -248,42 +231,58 @@ export default function OrganizationDashboard() {
                                             />
                                             <Bar dataKey="value" fill="hsl(var(--primary))" radius={4} />
                                         </BarChart>
-                                    </ChartContainer>
+                                    </ResponsiveContainer>
                                 </CardContent>
                            </Card>
-                           <Card className="bg-primary/5 flex flex-col">
+                           <div className="space-y-6">
+                            <Card className="bg-primary/5 flex flex-col">
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2">
+                                            <HeartPulse className="text-primary" />
+                                            AI Wellness Insights
+                                        </CardTitle>
+                                        <CardDescription>Actionable recommendations based on the latest data.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="flex-1">
+                                        {insightsLoading ? (
+                                            <div className="flex items-center justify-center h-full">
+                                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                            </div>
+                                        ) : insights ? (
+                                            <div className="space-y-4 text-sm">
+                                                {insights.recommendations.map((rec, index) => (
+                                                    <Alert key={index} variant="default" className="bg-background">
+                                                        <AlertTitle className="font-semibold">{rec.title}</AlertTitle>
+                                                        <AlertDescription>{rec.description}</AlertDescription>
+                                                    </Alert>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="text-muted-foreground text-center">No insights generated yet.</p>
+                                        )}
+                                    </CardContent>
+                                    <CardFooter>
+                                        <Button className="w-full" onClick={() => handleGenerateInsights(members)} disabled={insightsLoading}>
+                                            {insightsLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BarChartIcon className="mr-2 h-4 w-4" />}
+                                            {insightsLoading ? 'Analyzing...' : 'Re-generate Insights'}
+                                        </Button>
+                                    </CardFooter>
+                            </Card>
+                             <Card>
                                 <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <HeartPulse className="text-primary" />
-                                        AI Wellness Insights
-                                    </CardTitle>
-                                    <CardDescription>Actionable recommendations based on the latest data.</CardDescription>
+                                    <CardTitle>Invite Members</CardTitle>
+                                    <CardDescription>Share this code with your team members to join.</CardDescription>
                                 </CardHeader>
-                                <CardContent className="flex-1">
-                                    {insightsLoading ? (
-                                        <div className="flex items-center justify-center h-full">
-                                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                                        </div>
-                                    ) : insights ? (
-                                        <div className="space-y-4 text-sm">
-                                            {insights.recommendations.map((rec, index) => (
-                                                <Alert key={index} variant="default" className="bg-background">
-                                                    <AlertTitle className="font-semibold">{rec.title}</AlertTitle>
-                                                    <AlertDescription>{rec.description}</AlertDescription>
-                                                </Alert>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <p className="text-muted-foreground text-center">No insights generated yet.</p>
-                                    )}
+                                <CardContent>
+                                    <div className="flex items-center gap-4 p-3 bg-secondary rounded-lg">
+                                        <p className="text-xl font-mono flex-1 truncate">{organization.id}</p>
+                                        <Button variant="secondary" size="icon" onClick={copyInviteCode}>
+                                            <ClipboardCopy className="h-5 w-5" />
+                                        </Button>
+                                    </div>
                                 </CardContent>
-                                <CardFooter>
-                                    <Button className="w-full" onClick={() => handleGenerateInsights(members)} disabled={insightsLoading}>
-                                        {insightsLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BarChartIcon className="mr-2 h-4 w-4" />}
-                                        {insightsLoading ? 'Analyzing...' : 'Re-generate Insights'}
-                                    </Button>
-                                </CardFooter>
-                           </Card>
+                            </Card>
+                           </div>
                         </div>
                     </div>
                 )}
