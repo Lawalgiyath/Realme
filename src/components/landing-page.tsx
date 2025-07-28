@@ -9,7 +9,7 @@ import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 
@@ -103,140 +103,61 @@ const features = [
     },
 ];
 
-const InteractiveFeatureCards = () => {
-    const [cards, setCards] = useState(features);
-    const intervalRef = useRef<NodeJS.Timeout | null>(null);
+const HorizontalScrollFeatures = () => {
+  const targetRef = useRef<HTMLDivElement | null>(null);
+  const { scrollYProgress } = useScroll({
+    target: targetRef,
+  });
 
-    const cycleCards = useCallback(() => {
-        setCards(prevCards => {
-            const newCards = [...prevCards];
-            const first = newCards.shift()!;
-            newCards.push(first);
-            return newCards;
-        });
-    }, []);
-
-    useEffect(() => {
-        intervalRef.current = setInterval(cycleCards, 5000);
-        return () => {
-            if (intervalRef.current) {
-                clearInterval(intervalRef.current);
-            }
-        };
-    }, [cycleCards]);
-
-    const handleCardClick = (index: number) => {
-        if (intervalRef.current) clearInterval(intervalRef.current);
-        
-        setCards(prevCards => {
-            let newCards = [...prevCards];
-            // Move the clicked card to the front (end of the array)
-            const clickedCard = newCards.splice(index, 1)[0];
-            newCards.push(clickedCard);
-            // Reorder the rest to put the new front card at the end of the original array logic.
-            const frontCardIndex = features.findIndex(f => f.title === clickedCard.title);
-            
-            const reorderedFeatures = [...features];
-            const [item] = reorderedFeatures.splice(frontCardIndex, 1);
-            reorderedFeatures.push(item);
-            
-            // This logic is simplified to just move clicked to front
-            const finalCards = [...prevCards.filter(c => c.title !== clickedCard.title), clickedCard];
-            return finalCards;
-        });
-
-    };
-    
-    const isMobile = useIsMobile();
-    if (isMobile) {
-        return (
-            <div className="flex flex-col gap-4">
-                {features.map((feature, index) => (
-                    <Card key={feature.title} className="bg-secondary/50">
-                        <CardHeader>
-                            <div className="flex items-center gap-4 mb-2">
-                                <feature.icon className="w-6 h-6 text-primary" />
-                                <CardTitle className="text-lg">{feature.title}</CardTitle>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-muted-foreground">{feature.description}</p>
-                        </CardContent>
-                    </Card>
-                ))}
+  const x = useTransform(scrollYProgress, [0, 1], ["1%", "-65%"]);
+  
+  return (
+    <section ref={targetRef} className="relative h-[300vh] bg-background">
+      <div className="sticky top-0 flex h-screen items-center overflow-hidden">
+        <motion.div style={{ x }} className="flex gap-8">
+            <div className="w-screen flex-shrink-0 flex items-center justify-center">
+                 <div className="text-center max-w-3xl mx-auto px-4">
+                    <h2 className="text-3xl md:text-4xl font-bold">A toolkit for a healthier mind</h2>
+                    <p className="mt-4 text-lg text-muted-foreground">
+                        Everything you need to build mental resilience, track your progress, and feel your best, all in one place. Keep scrolling...
+                    </p>
+                </div>
             </div>
-        )
-    }
+          {features.map((card) => {
+            return <FeatureCard card={card} key={card.title} />;
+          })}
+        </motion.div>
+      </div>
+    </section>
+  );
+};
 
-    return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-             <div className="relative h-[450px] w-full max-w-md mx-auto">
-                <AnimatePresence>
-                    {cards.map((card, index) => {
-                        const isFrontCard = index === cards.length - 1;
-                        return (
-                             <motion.div
-                                key={card.title}
-                                className={cn(
-                                    "absolute w-full h-full rounded-2xl overflow-hidden shadow-2xl bg-card border",
-                                    "transform-gpu cursor-pointer"
-                                )}
-                                initial={{ scale: 0.9, y: 30, opacity: 0 }}
-                                animate={{
-                                    scale: 1 - (cards.length - 1 - index) * 0.05,
-                                    y: (cards.length - 1 - index) * -15,
-                                    opacity: 1,
-                                    zIndex: index,
-                                }}
-                                exit={{ y: 50, opacity: 0, scale: 0.9 }}
-                                transition={{ duration: 0.5, ease: "easeInOut" }}
-                                onClick={() => isFrontCard ? cycleCards() : handleCardClick(index)}
-                            >
-                                <Image
-                                    src={card.image}
-                                    alt={card.title}
-                                    layout="fill"
-                                    objectFit="cover"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-                                <div className="absolute bottom-0 left-0 p-6 text-white">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-white/10 rounded-full backdrop-blur-sm">
-                                            <card.icon className="w-5 h-5"/>
-                                        </div>
-                                         <h3 className="text-xl font-bold">{card.title}</h3>
-                                    </div>
-                                    <p className="mt-2 text-white/80">{card.description}</p>
-                                </div>
-                            </motion.div>
-                        );
-                    })}
-                </AnimatePresence>
+const FeatureCard = ({ card }: { card: typeof features[0] }) => {
+  return (
+    <div
+      key={card.title}
+      className="group relative h-[450px] w-[600px] overflow-hidden rounded-2xl shadow-2xl bg-card border"
+    >
+      <div
+        style={{
+          backgroundImage: `url(${card.image})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+        className="absolute inset-0 z-0 transition-transform duration-300 group-hover:scale-110"
+      ></div>
+       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent z-10" />
+      <div className="absolute bottom-0 left-0 p-6 text-white z-20">
+         <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/10 rounded-full backdrop-blur-sm">
+                <card.icon className="w-5 h-5"/>
             </div>
-            <div className="flex flex-col gap-4">
-                {features.map((feature) => {
-                    const isActive = cards[cards.length - 1].title === feature.title;
-                    return (
-                        <Button
-                            key={feature.title}
-                            variant={isActive ? 'secondary' : 'ghost'}
-                            onClick={() => {
-                                const cardIndex = cards.findIndex(c => c.title === feature.title);
-                                if (cardIndex !== -1) handleCardClick(cardIndex);
-                            }}
-                            className="justify-start p-6 text-left h-auto"
-                        >
-                            <feature.icon className="w-6 h-6 mr-4 text-primary" />
-                            <div>
-                                <p className="font-bold text-base">{feature.title}</p>
-                                <p className="text-sm text-muted-foreground">Click to learn more</p>
-                            </div>
-                        </Button>
-                    )
-                })}
-            </div>
+             <h3 className="text-xl font-bold">{card.title}</h3>
         </div>
-    );
+        <p className="mt-2 text-white/80">{card.description}</p>
+      </div>
+    </div>
+  );
 };
 
 
@@ -309,18 +230,24 @@ export default function LandingPage() {
         </section>
 
         {/* Features Section */}
-        <section id="features" className="py-20 md:py-28">
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="text-center max-w-3xl mx-auto">
-                    <h2 className="text-3xl md:text-4xl font-bold">A toolkit for a healthier mind</h2>
-                    <p className="mt-4 text-lg text-muted-foreground">
-                        Everything you need to build mental resilience, track your progress, and feel your best, all in one place.
-                    </p>
+        <HorizontalScrollFeatures />
+        
+        {/* Calming Game Section */}
+         <section className="py-20 md:py-28">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+             <div className="text-center max-w-3xl mx-auto">
+                 <div className="mx-auto w-fit p-3 rounded-full bg-primary/10 border-2 border-primary/20 mb-4">
+                    <Gamepad2 className="h-8 w-8 text-primary" />
                 </div>
-                <div className="mt-16">
-                    <InteractiveFeatureCards />
-                </div>
+                <h2 className="text-3xl md:text-4xl font-bold">Take a Mindful Moment</h2>
+                <p className="mt-4 text-lg text-muted-foreground">
+                    Feeling overwhelmed? Take a deep breath and enjoy this simple calming game. There's no goal, just a moment of peace.
+                </p>
             </div>
+            <div className="mt-16 max-w-2xl mx-auto">
+                <BubblePopGame />
+            </div>
+          </div>
         </section>
 
         {/* Organization CTA */}
@@ -423,3 +350,5 @@ const TestimonialCard = ({ text, name, icon: Icon }: { text: string, name: strin
     </CardContent>
   </Card>
 );
+
+    
