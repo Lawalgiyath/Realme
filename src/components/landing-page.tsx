@@ -109,7 +109,7 @@ const HorizontalScrollFeatures = () => {
     target: targetRef,
   });
 
-  const x = useTransform(scrollYProgress, [0, 1], ["1%", "-65%"]);
+  const x = useTransform(scrollYProgress, [0, 1], ["1%", "-95%"]);
   
   return (
     <section ref={targetRef} className="relative h-[300vh] bg-background">
@@ -253,8 +253,8 @@ export default function LandingPage() {
         {/* Organization CTA */}
         <section className="py-20 md:py-28 bg-secondary/30">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="grid lg:grid-cols-2 gap-12 items-center">
-                    <div className="max-w-md">
+                <div className="grid lg:grid-cols-5 gap-12 items-center">
+                    <div className="lg:col-span-2">
                         <div className="p-3 rounded-full bg-primary/10 border-2 border-primary/20 w-fit mb-4">
                             <Briefcase className="h-8 w-8 text-primary" />
                         </div>
@@ -268,13 +268,13 @@ export default function LandingPage() {
                             </Button>
                         </div>
                     </div>
-                    <div>
+                    <div className="lg:col-span-3">
                         <Image
                             src="https://i.ibb.co/d5Mbrzq/pexels-mikael-blomkvist-1709003.jpg"
                             alt="A team collaborating in an office"
-                            width={600}
-                            height={400}
-                            className="rounded-lg shadow-lg"
+                            width={800}
+                            height={500}
+                            className="rounded-lg shadow-lg w-full h-full object-cover"
                         />
                     </div>
                 </div>
@@ -350,5 +350,3 @@ const TestimonialCard = ({ text, name, icon: Icon }: { text: string, name: strin
     </CardContent>
   </Card>
 );
-
-    
